@@ -1047,6 +1047,12 @@ do
     do_apply_os_config
     exit $?
     ;;
+  --enable-camera)
+    INTERACTIVE=False
+    printf "Please reboot\n"
+    set_camera 1
+    exit $?
+    ;;
   nonint)
     INTERACTIVE=False
     $@

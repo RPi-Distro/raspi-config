@@ -406,7 +406,7 @@ do_ssh() {
       --yes-button Enable --no-button Disable
     RET=$?
   else
-    RET=$1
+    RET=$((1-$1))
   fi
   if [ $RET -eq 0 ]; then
     update-rc.d ssh enable &&
@@ -1074,6 +1074,13 @@ do
     do_change_hostname $NEW_HOSTNAME
     exit $?
     ;;
+  --ssh=*)
+    INTERACTIVE=False
+    SSH_STATUS=`echo $i | sed 's/[-a-zA-Z0-9]*=//'`
+    do_ssh $SSH_STATUS
+    exit $?
+    ;;
+
   nonint)
     INTERACTIVE=False
     $@

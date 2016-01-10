@@ -565,7 +565,7 @@ do_i2c() {
       whiptail --yesno "Would you like the ARM I2C interface to be enabled?" $DEFAULT 20 60 2
       RET=$?
     else
-      RET=$1
+      RET=$((1-$1))
     fi
     if [ $RET -eq 0 ]; then
       SETTING=on
@@ -610,7 +610,7 @@ do_i2c() {
     whiptail --yesno "Would you like the I2C kernel module to be loaded by default?" $DEFAULT 20 60 2
     RET=$?
   else
-    RET=$1
+    RET=$((1-$1))
   fi
   if [ $RET -eq 0 ]; then
     sed $BLACKLIST -i -e "s/^\(blacklist[[:space:]]*i2c[-_]bcm2708\)/#\1/"
@@ -1072,13 +1072,19 @@ do
     INTERACTIVE=False
     NEW_HOSTNAME=`echo $i | sed 's/[-a-zA-Z0-9]*=//'`
     do_change_hostname $NEW_HOSTNAME
-    exit $?
+    exit 0
     ;;
   --ssh=*)
     INTERACTIVE=False
     SSH_STATUS=`echo $i | sed 's/[-a-zA-Z0-9]*=//'`
     do_ssh $SSH_STATUS
-    exit $?
+    exit 0
+    ;;
+  --i2c=*)
+    INTERACTIVE=False
+    I2C_STATUS=`echo $i | sed 's/[-a-zA-Z0-9]*=//'`
+    do_i2c $I2C_STATUS
+    exit 0
     ;;
 
   nonint)

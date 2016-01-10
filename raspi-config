@@ -480,7 +480,7 @@ do_spi() {
       whiptail --yesno "Would you like the SPI interface to be enabled?" $DEFAULT 20 60 2
       RET=$?
     else
-      RET=$1
+      RET=$((1-$1))
     fi
     if [ $RET -eq 0 ]; then
       SETTING=on
@@ -525,7 +525,7 @@ do_spi() {
     whiptail --yesno "Would you like the SPI kernel module to be loaded by default?" $DEFAULT 20 60 2
     RET=$?
   else
-    RET=$1
+    RET=$((1-$1))
   fi
   if [ $RET -eq 0 ]; then
     sed $BLACKLIST -i -e "s/^\(blacklist[[:space:]]*spi[-_]bcm2708\)/#\1/"
@@ -1086,7 +1086,12 @@ do
     do_i2c $I2C_STATUS
     exit 0
     ;;
-
+  --spi=*)
+    INTERACTIVE=False
+    SPI_STATUS=`echo $i | sed 's/[-a-zA-Z0-9]*=//'`
+    do_spi $SPI_STATUS
+    exit 0
+    ;;
   nonint)
     INTERACTIVE=False
     $@

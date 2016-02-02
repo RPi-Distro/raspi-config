@@ -548,12 +548,13 @@ clear_overclock () {
 }
 
 do_ssh() {
-  if [ -e /var/log/regen_ssh_keys.log ] && ! grep -q "^finished" /var/log/regen_ssh_keys.log; then
   if [ -f /usr/lib/systemd/system/sshd.service ]; then
      SSH=sshd
   else
      SSH=ssh
   fi
+  if systemctl status sshd-keygen.service 2>/dev/null | grep -q 'Active: active' ||
+     [ -e /var/log/regen_ssh_keys.log ] && ! grep -q "^finished" /var/log/regen_ssh_keys.log; then
     whiptail --msgbox "Initial ssh key generation still running. Please wait and try again." 20 60 2
     return 1
   fi

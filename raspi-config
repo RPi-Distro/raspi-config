@@ -286,7 +286,24 @@ do_configure_keyboard() {
 }
 
 do_change_locale() {
-  dpkg-reconfigure locales
+  if [ -x /usr/bin/localectl ] && ! [ -x /usr/sbin/dpkg-reconfigure ]; then
+    LOCALE=$(localectl status |awk -F= '/System Locale: LANG=/ {print $2}')
+    LOCALE=$(locale -a -v |sed '
+      s/, Russian Federation//;
+      s/language locale using \(.*\) alphabet/(\1)/;
+      s/ language locale for/,/i;
+      s/ locale for/,/i' |awk '
+      /^locale: / {printf $2}
+      /^ *title \| / {gsub(".* \\| ", " \""); printf $0}
+      /codeset \| UTF-8/ {print "\""; next}
+      /^ *codeset \| / {print " ("$3")\""}' |
+      xargs whiptail --default-item "$LOCALE" --menu "Select Language" 20 70 10 3>&1 1>&2 2>&3)
+    if [ $? -eq 0 ]; then
+      localectl set-locale LANG=$LOCALE
+    fi
+  else
+    dpkg-reconfigure locales
+  fi
 }
 
 do_change_timezone() {

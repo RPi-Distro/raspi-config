@@ -883,15 +883,21 @@ do_wait_for_network() {
   if [ $? -eq 0 ]; then
     case "$RET" in
       Fast)
+        systemctl disable NetworkManager-wait-online.service
         rm /etc/systemd/system/dhcpcd.service.d/wait.conf
         ;;
       Slow)
-        mkdir -p /etc/systemd/system/dhcpcd.service.d/
-        cat > /etc/systemd/system/dhcpcd.service.d/wait.conf << EOF
+        if [ -f /lib/systemd/system/NetworkManager-wait-online.service ] &&
+           ! [ -f /lib/systemd/system/dhcpcd.service ]; then
+          systemctl enable NetworkManager-wait-online.service
+        else
+          mkdir -p /etc/systemd/system/dhcpcd.service.d/
+          cat > /etc/systemd/system/dhcpcd.service.d/wait.conf << EOF
 [Service]
 ExecStart=
 ExecStart=/sbin/dhcpcd -q -w
 EOF
+        fi
         ;;
       *)
         whiptail --msgbox "Programmer error, unrecognised option" 20 60 2

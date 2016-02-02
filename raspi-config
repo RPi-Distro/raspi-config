@@ -8,6 +8,13 @@ ASK_TO_REBOOT=0
 BLACKLIST=/etc/modprobe.d/raspi-blacklist.conf
 CONFIG=/boot/config.txt
 
+if [ -f /etc/redhat-release ]; then
+   INSTALLER=yum
+   [ -x /usr/bin/dnf ] && INSTALLER=dnf
+else
+   INSTALLER=apt-get
+fi
+
 is_pione() {
    if grep -q "^Revision\s*:\s*00[0-9a-fA-F][0-9a-fA-F]$" /proc/cpuinfo; then
       return 0
@@ -832,7 +839,7 @@ do_boot_behaviour_new() {
           sed /etc/lightdm/lightdm.conf -i -e "s/^autologin-user=pi/#autologin-user=/"
           disable_raspi_config_at_boot
         else
-          whiptail --msgbox "Do sudo apt-get install lightdm to allow configuration of boot to desktop" 20 60 2
+          whiptail --msgbox "Do sudo $INSTALLER install lightdm to allow configuration of boot to desktop" 20 60 2
           return 1
         fi
         ;;
@@ -851,7 +858,7 @@ do_boot_behaviour_new() {
             whiptail --msgbox "The pi user has been removed, can't set up boot to desktop" 20 60 2
           fi
         else
-          whiptail --msgbox "Do sudo apt-get install lightdm to allow configuration of boot to desktop" 20 60 2
+          whiptail --msgbox "Do sudo $INSTALLER install lightdm to allow configuration of boot to desktop" 20 60 2
           return 1
         fi
         ;;
@@ -943,7 +950,7 @@ do_boot_behaviour() {
             whiptail --msgbox "The pi user has been removed, can't set up boot to desktop" 20 60 2
           fi
         else
-          whiptail --msgbox "Do sudo apt-get install lightdm to allow configuration of boot to desktop" 20 60 2
+          whiptail --msgbox "Do sudo $INSTALLER install lightdm to allow configuration of boot to desktop" 20 60 2
           return 1
         fi
         ;;
@@ -1086,8 +1093,13 @@ do_gldriver() {
 }
 
 do_update() {
-  apt-get update &&
-  apt-get install raspi-config &&
+  if ! [ "$INSTALLER" = apt-get ]; then
+    $INSTALLER -y update raspi-config
+  else
+    apt-get update &&
+    apt-get install raspi-config
+  fi
+  [ "$?" = 0 ] &&
   printf "Sleeping 5 seconds before reloading raspi-config\n" &&
   sleep 5 &&
   exec raspi-config

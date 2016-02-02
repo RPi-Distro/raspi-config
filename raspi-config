@@ -307,7 +307,18 @@ do_change_locale() {
 }
 
 do_change_timezone() {
-  dpkg-reconfigure tzdata
+  if [ -x /usr/sbin/zdump ] && ! [ -x /usr/sbin/dpkg-reconfigure ]; then
+    TZ=$(realpath /etc/localtime | sed 's,/usr/share/zoneinfo/,,')
+    TZ=$(find /usr/share/zoneinfo -type f -not -name '*.*' \
+        -not -path '*/posix/*' -not -path '*/right/*' |
+        xargs zdump |sed 's,/usr/share/zoneinfo/\([^ ]*\).* \([^ ]*\),\1 \2,' |
+        sort |xargs whiptail --default-item "$TZ" --menu "Select Timezone" 20 70 10 3>&1 1>&2 2>&3)
+    if [ $? -eq 0 ]; then
+      [ -f /usr/share/zoneinfo/$TZ ] && ln -sf ../usr/share/zoneinfo/$TZ /etc/localtime
+    fi
+  else
+    dpkg-reconfigure tzdata
+  fi
 }
 
 do_change_hostname() {

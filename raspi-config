@@ -13,19 +13,31 @@ is_pione() {
       return 0
    elif  grep -q "^Revision\s*:\s*[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]0[0-36][0-9a-fA-F]" /proc/cpuinfo ; then
       return 0
+   elif  grep -q "^Raspberry Pi Model [AB]" /proc/device-tree/model; then
+      return 0
    else
       return 1
    fi
 }
 
 is_pitwo() {
-   grep -q "^Revision\s*:\s*[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]04[0-9a-fA-F]" /proc/cpuinfo
-   return $?
+   if grep -q "^Revision\s*:\s*[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]04[0-9a-fA-F]" /proc/cpuinfo; then
+      return 0
+   elif  grep -q "^Raspberry Pi 2" /proc/device-tree/model; then
+      return 0
+   else
+      return 1
+   fi
 }
 
 is_pizero() {
-   grep -q "^Revision\s*:\s*[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]09[0-9a-fA-F]" /proc/cpuinfo
-   return $?
+   if grep -q "^Revision\s*:\s*[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]09[0-9a-fA-F]" /proc/cpuinfo; then
+      return 0
+   elif  grep -q "^Raspberry Pi Zero" /proc/device-tree/model; then
+      return 0
+   else
+      return 1
+   fi
 }
 
 get_pi_type() {

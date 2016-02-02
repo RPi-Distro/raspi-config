@@ -413,7 +413,7 @@ set_memory_split() {
 do_overclock() {
   if ! is_pione && ! is_pitwo; then
     whiptail --msgbox "This Pi cannot be overclocked." 20 60 2
-    return 1
+    return 0
   fi
   if [ "$INTERACTIVE" = True ]; then
     whiptail --msgbox "\

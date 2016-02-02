@@ -269,11 +269,20 @@ do_change_pass() {
 }
 
 do_configure_keyboard() {
-  dpkg-reconfigure keyboard-configuration &&
-  printf "Reloading keymap. This may take a short while\n" &&
-  invoke-rc.d keyboard-setup start || return $?
-  udevadm trigger --subsystem-match=input --action=change
-  return 0
+  if [ -x /usr/bin/localectl ] && ! [ -x /usr/sbin/dpkg-reconfigure ]; then
+    KEYMAP=$(localectl status |awk '/VC Keymap: / {print $NF}')
+    KEYMAP=$(localectl list-keymaps | sed 's/\(.*\)/\1 \1/' | sort |
+      xargs whiptail --default-item "$KEYMAP" --noitem --menu "Select Keymap" 20 70 10 3>&1 1>&2 2>&3)
+    if [ $? -eq 0 ]; then
+      localectl set-keymap $KEYMAP
+    fi
+  else
+    dpkg-reconfigure keyboard-configuration &&
+    printf "Reloading keymap. This may take a short while\n" &&
+    service_control keyboard-setup start || return $?
+    udevadm trigger --subsystem-match=input --action=change
+    return 0
+  fi
 }
 
 do_change_locale() {

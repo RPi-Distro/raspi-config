@@ -331,7 +331,11 @@ Hostname labels cannot begin or end with a hyphen.
 No other symbols, punctuation characters, or blank spaces are permitted.\
 " 20 70 1
   fi
-  CURRENT_HOSTNAME=`cat /etc/hostname | tr -d " \t\n\r"`
+  if [ $SYSTEMD -eq 1 ]; then
+    CURRENT_HOSTNAME=`hostnamectl --static`
+  else
+    CURRENT_HOSTNAME=`cat /etc/hostname | tr -d " \t\n\r"`
+  fi
   if [ "$INTERACTIVE" = True ]; then
     NEW_HOSTNAME=$(whiptail --inputbox "Please enter a hostname" 20 60 "$CURRENT_HOSTNAME" 3>&1 1>&2 2>&3)
   else
@@ -339,9 +343,13 @@ No other symbols, punctuation characters, or blank spaces are permitted.\
     true
   fi
   if [ $? -eq 0 ]; then
-    echo $NEW_HOSTNAME > /etc/hostname
-    sed -i "s/127.0.1.1.*$CURRENT_HOSTNAME/127.0.1.1\t$NEW_HOSTNAME/g" /etc/hosts
-    ASK_TO_REBOOT=1
+    if [ $SYSTEMD -eq 1 ]; then
+      hostnamectl set-hostname "$NEW_HOSTNAME"
+    else
+      echo $NEW_HOSTNAME > /etc/hostname
+      sed -i "s/127.0.1.1.*$CURRENT_HOSTNAME/127.0.1.1\t$NEW_HOSTNAME/g" /etc/hosts
+      ASK_TO_REBOOT=1
+    fi
   fi
 }
 

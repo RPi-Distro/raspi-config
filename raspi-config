@@ -1177,13 +1177,12 @@ do_audio() {
   elif [ -e $CONFIG ] && grep -q -E "^(device_tree_param|dtparam)=([^,]*,)*audio(=(on|true|yes|1))?(,.*)?$" $CONFIG; then
     whiptail --msgbox "Audio is apparently enabled in the GPU but no sound cards found!" 20 60 2
     return 1
-  else
+  elif device_tree_enabled; then
     DO_AUDIO=$(whiptail --menu "Audio is not enabled, so you cannot force any particular output yet.  Would you like to enable audio at next reboot?" 26 60 10 \
       "Y" "Yes, enable audio" \
       "N" "No, leave audio disabled" \
       3>&1 1>&2 2>&3)
     if [ $? -eq 0 ] && [ "$DO_AUDIO" = "Y" ]; then
-      # FIXME: ensure device tree is enabled
       SETTING="on"
       sed $CONFIG -i -r -e "s/^((device_tree_param|dtparam)=([^,]*,)*audio)(=[^,]*)?/\1=$SETTING/"
       if ! grep -q -E "^(device_tree_param|dtparam)=([^,]*,)*audio=$SETTING(,.*)?$" $CONFIG; then
@@ -1191,6 +1190,9 @@ do_audio() {
       fi
       ASK_TO_REBOOT=1
     fi
+  else
+    whiptail --msgbox "Device tree is disabled.  Please enable that from 'Advanced Options' before attempting to enable audio output." 20 60 2
+    return 1
   fi
 }
 

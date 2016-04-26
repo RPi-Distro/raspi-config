@@ -28,6 +28,15 @@ is_pizero() {
    return $?
 }
 
+device_tree_enabled() {
+  if [ -e $CONFIG ] && grep -q "^device_tree=$" $CONFIG; then
+    return 1
+  else
+    # default case is enabled
+    return 0
+  fi
+}
+
 get_pi_type() {
    if is_pione; then
       echo 1
@@ -548,12 +557,6 @@ do_devicetree() {
 }
 
 do_spi() {
-  DEVICE_TREE="yes" # assume not disabled
-  DEFAULT=
-  if [ -e $CONFIG ] && grep -q "^device_tree=$" $CONFIG; then
-    DEVICE_TREE="no"
-  fi
-
   CURRENT_SETTING="off" # assume disabled
   DEFAULT=--defaultno
   if [ -e $CONFIG ] && grep -q -E "^(device_tree_param|dtparam)=([^,]*,)*spi(=(on|true|yes|1))?(,.*)?$" $CONFIG; then
@@ -561,7 +564,7 @@ do_spi() {
     DEFAULT=
   fi
 
-  if [ $DEVICE_TREE = "yes" ]; then
+  if device_tree_enabled; then
     if [ "$INTERACTIVE" = True ]; then
       whiptail --yesno "Would you like the SPI interface to be enabled?" $DEFAULT 20 60 2
       RET=$?
@@ -633,12 +636,6 @@ do_spi() {
 }
 
 do_i2c() {
-  DEVICE_TREE="yes" # assume not disabled
-  DEFAULT=
-  if [ -e $CONFIG ] && grep -q "^device_tree=$" $CONFIG; then
-    DEVICE_TREE="no"
-  fi
-
   CURRENT_SETTING="off" # assume disabled
   DEFAULT=--defaultno
   if [ -e $CONFIG ] && grep -q -E "^(device_tree_param|dtparam)=([^,]*,)*i2c(_arm)?(=(on|true|yes|1))?(,.*)?$" $CONFIG; then
@@ -646,7 +643,7 @@ do_i2c() {
     DEFAULT=
   fi
 
-  if [ $DEVICE_TREE = "yes" ]; then
+  if device_tree_enabled; then
     if [ "$INTERACTIVE" = True ]; then
       whiptail --yesno "Would you like the ARM I2C interface to be enabled?" $DEFAULT 20 60 2
       RET=$?

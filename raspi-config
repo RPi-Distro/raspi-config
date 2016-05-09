@@ -28,6 +28,15 @@ is_pizero() {
    return $?
 }
 
+device_tree_enabled() {
+  if [ -e $CONFIG ] && grep -q "^device_tree=$" $CONFIG; then
+    return 1
+  else
+    # default case is enabled
+    return 0
+  fi
+}
+
 get_pi_type() {
    if is_pione; then
       echo 1
@@ -548,12 +557,6 @@ do_devicetree() {
 }
 
 do_spi() {
-  DEVICE_TREE="yes" # assume not disabled
-  DEFAULT=
-  if [ -e $CONFIG ] && grep -q "^device_tree=$" $CONFIG; then
-    DEVICE_TREE="no"
-  fi
-
   CURRENT_SETTING="off" # assume disabled
   DEFAULT=--defaultno
   if [ -e $CONFIG ] && grep -q -E "^(device_tree_param|dtparam)=([^,]*,)*spi(=(on|true|yes|1))?(,.*)?$" $CONFIG; then
@@ -561,7 +564,7 @@ do_spi() {
     DEFAULT=
   fi
 
-  if [ $DEVICE_TREE = "yes" ]; then
+  if device_tree_enabled; then
     if [ "$INTERACTIVE" = True ]; then
       whiptail --yesno "Would you like the SPI interface to be enabled?" $DEFAULT 20 60 2
       RET=$?
@@ -612,12 +615,6 @@ do_spi() {
 }
 
 do_i2c() {
-  DEVICE_TREE="yes" # assume not disabled
-  DEFAULT=
-  if [ -e $CONFIG ] && grep -q "^device_tree=$" $CONFIG; then
-    DEVICE_TREE="no"
-  fi
-
   CURRENT_SETTING="off" # assume disabled
   DEFAULT=--defaultno
   if [ -e $CONFIG ] && grep -q -E "^(device_tree_param|dtparam)=([^,]*,)*i2c(_arm)?(=(on|true|yes|1))?(,.*)?$" $CONFIG; then
@@ -625,7 +622,7 @@ do_i2c() {
     DEFAULT=
   fi
 
-  if [ $DEVICE_TREE = "yes" ]; then
+  if device_tree_enabled; then
     if [ "$INTERACTIVE" = True ]; then
       whiptail --yesno "Would you like the ARM I2C interface to be enabled?" $DEFAULT 20 60 2
       RET=$?
@@ -1143,13 +1140,34 @@ do_update() {
 }
 
 do_audio() {
-  AUDIO_OUT=$(whiptail --menu "Choose the audio output" 20 60 10 \
-    "0" "Auto" \
-    "1" "Force 3.5mm ('headphone') jack" \
-    "2" "Force HDMI" \
-    3>&1 1>&2 2>&3)
-  if [ $? -eq 0 ]; then
-    amixer cset numid=3 "$AUDIO_OUT"
+  if [ -d /proc/asound ]; then
+    AUDIO_OUT=$(whiptail --menu "Choose the audio output" 20 60 10 \
+      "0" "Auto" \
+      "1" "Force 3.5mm ('headphone') jack" \
+      "2" "Force HDMI" \
+      3>&1 1>&2 2>&3)
+    if [ $? -eq 0 ]; then
+      amixer cset numid=3 "$AUDIO_OUT"
+    fi
+  elif [ -e $CONFIG ] && grep -q -E "^(device_tree_param|dtparam)=([^,]*,)*audio(=(on|true|yes|1))?(,.*)?$" $CONFIG; then
+    whiptail --msgbox "Audio is apparently enabled in the GPU but no sound cards found!" 20 60 2
+    return 1
+  elif device_tree_enabled; then
+    DO_AUDIO=$(whiptail --menu "Audio is not enabled, so you cannot force any particular output yet.  Would you like to enable audio at next reboot?" 26 60 10 \
+      "Y" "Yes, enable audio" \
+      "N" "No, leave audio disabled" \
+      3>&1 1>&2 2>&3)
+    if [ $? -eq 0 ] && [ "$DO_AUDIO" = "Y" ]; then
+      SETTING="on"
+      sed $CONFIG -i -r -e "s/^((device_tree_param|dtparam)=([^,]*,)*audio)(=[^,]*)?/\1=$SETTING/"
+      if ! grep -q -E "^(device_tree_param|dtparam)=([^,]*,)*audio=$SETTING(,.*)?$" $CONFIG; then
+        printf "dtparam=audio=$SETTING\n" >> $CONFIG
+      fi
+      ASK_TO_REBOOT=1
+    fi
+  else
+    whiptail --msgbox "Device tree is disabled.  Please enable that from 'Advanced Options' before attempting to enable audio output." 20 60 2
+    return 1
   fi
 }
 

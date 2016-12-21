@@ -8,7 +8,7 @@ ASK_TO_REBOOT=0
 BLACKLIST=/etc/modprobe.d/raspi-blacklist.conf
 CONFIG=/boot/config.txt
 CMDLINE=/boot/cmdline.txt
-DEFAULT_USER_UUID=1000
+DEFAULT_UID=1000
 
 is_pione() {
    if grep -q "^Revision\s*:\s*00[0-9a-fA-F][0-9a-fA-F]$" /proc/cpuinfo; then
@@ -41,7 +41,7 @@ get_pi_type() {
 }
 
 get_default_user() {
-    DEFAULT_USER=$(getent passwd "$DEFAULT_USER_UUID" | cut -d: -f1)
+    DEFAULT_USER=$(getent passwd "$DEFAULT_UID" | cut -d: -f1)
 }
 
 get_init_sys() {

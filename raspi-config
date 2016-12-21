@@ -294,10 +294,6 @@ do_overscan() {
   fi
 }
 
-do_change_details() {
- do_change_pass
-}
-
 do_change_user() {
   if [ "$INTERACTIVE" = True ]; then
     NEW_USER=$(whiptail --inputbox "Please enter a new username" 20 60 "$DEFAULT_USER" 3>&1 1>&2 2>&3)

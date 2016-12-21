@@ -39,6 +39,10 @@ get_pi_type() {
    fi
 }
 
+get_default_user() {
+    DEFAULT_USER=$(getent passwd "1000" | cut -d: -f1)
+}
+
 get_init_sys() {
   if command -v systemctl > /dev/null && systemctl | grep -q '\-\.mount'; then
     SYSTEMD=1
@@ -289,9 +293,63 @@ do_overscan() {
   fi
 }
 
+do_change_details() {
+ do_change_pass
+}
+
+do_change_user() {
+  if [ "$INTERACTIVE" = True ]; then
+    NEW_USER=$(whiptail --inputbox "Please enter a new username" 20 60 "$DEFAULT_USER" 3>&1 1>&2 2>&3)
+  else
+    NEW_USER=$1
+    true
+  fi
+  if [ $? -eq 0 ]; then
+    ASK_TO_REBOOT=1
+
+    # Create an init.d script to do the rename as we can't whilst currently logged in as the default user
+cat <<EOF > /etc/init.d/rename_default_user_once &&
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          rename_default_user_once
+# Required-Start:
+# Required-Stop:
+# Default-Start: 3
+# Default-Stop:
+# Short-Description: Renames the user $DEFAULT_USER to $NEW_USER
+# Description:
+### END INIT INFO
+
+. /lib/lsb/init-functions
+
+case "\$1" in
+  start)
+    log_daemon_msg "Starting rename_default_user_once" &&
+    usermod -l $NEW_USER -m -d /home/$NEW_USER $DEFAULT_USER &&
+    groupmod -n $NEW_USER $DEFAULT_USER &&
+    sed -i 's/$DEFAULT_USER/$NEW_USER/g' /etc/sudoers.d/010_$DEFAULT_USER-nopasswd &&
+    mv /etc/sudoers.d/010_$DEFAULT_USER-nopasswd /etc/sudoers.d/010_$NEW_USER-nopasswd &&
+    update-rc.d rename_default_user_once remove &&
+    rm /etc/init.d/rename_default_user_once &&
+    log_end_msg \$?
+    ;;
+  *)
+    echo "Usage: \$0 start" >&2
+    exit 3
+    ;;
+esac
+EOF
+    chmod +x /etc/init.d/rename_default_user_once &&
+    update-rc.d rename_default_user_once defaults &&
+    if [ "$INTERACTIVE" = True ]; then
+      whiptail --msgbox "The default user ("$DEFAULT_USER") will be renamed to: "$NEW_USER" upon next reboot" 20 60 1
+    fi
+  fi
+}
+
 do_change_pass() {
-  whiptail --msgbox "You will now be asked to enter a new password for the pi user" 20 60 1
-  passwd pi &&
+  whiptail --msgbox "You will now be asked to enter a new password for the "$DEFAULT_USER" user" 20 60 1
+  passwd $DEFAULT_USER &&
   whiptail --msgbox "Password changed successfully" 20 60 1
 }
 
@@ -1518,6 +1576,23 @@ do_boot_menu() {
   fi
 }
 
+do_user_menu() {
+  FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "User Details" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+    "U1 Username" "Change username for the default user ("$DEFAULT_USER")" \
+    "U2 Password" "Change password for the default user ("$DEFAULT_USER")" \
+    3>&1 1>&2 2>&3)
+  RET=$?
+  if [ $RET -eq 1 ]; then
+    return 0
+  elif [ $RET -eq 0 ]; then
+    case "$FUN" in
+      U1\ *) do_change_user ;;
+      U2\ *) do_change_pass ;;
+      *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
+    esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
+  fi
+}
+
 #
 # Interactive use loop
 #
@@ -1529,10 +1604,11 @@ if [ "$INTERACTIVE" = True ]; then
   [ -e $CONFIG ] || touch $CONFIG
   get_init_sys
   calc_wt_size
+  get_default_user
   while true; do
     FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Setup Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Finish --ok-button Select \
       "1 Expand Filesystem" "Ensures that all of the SD card storage is available to the OS" \
-      "2 Change User Password" "Change password for the default user (pi)" \
+      "2 Change User Details" "Change username and password for the default user ("$DEFAULT_USER")" \
       "3 Boot Options" "Configure options for start-up" \
       "4 Localisation Options" "Set up language and regional settings to match your location" \
       "5 Interfacing Options" "Configure connections to peripherals" \
@@ -1546,7 +1622,7 @@ if [ "$INTERACTIVE" = True ]; then
     elif [ $RET -eq 0 ]; then
       case "$FUN" in
         1\ *) do_expand_rootfs ;;
-        2\ *) do_change_pass ;;
+        2\ *) do_user_menu ;;
         3\ *) do_boot_menu ;;
         4\ *) do_internationalisation_menu ;;
         5\ *) do_interface_menu ;;

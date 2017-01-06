@@ -19,6 +19,11 @@ is_pione() {
    fi
 }
 
+is_pithree() {
+   grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]08[0-9a-fA-F]$" /proc/cpuinfo
+   return $?
+}
+
 is_pitwo() {
    grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]04[0-9a-fA-F]$" /proc/cpuinfo
    return $?
@@ -34,6 +39,8 @@ get_pi_type() {
       echo 1
    elif is_pitwo; then
       echo 2
+   elif is_pithree; then
+      echo 3
    else
       echo 0
    fi
@@ -752,6 +759,58 @@ do_serial() {
   fi
 }
 
+get_bluetooth() {
+  overlay=$(get_config_var dtoverlay $CONFIG)
+  if [ $overlay = 0 ]; then
+    echo 0
+  elif [ $overlay = "pi3-disable-bt" ]; then
+    echo 1
+  else
+    echo -1 
+  fi
+}
+
+do_bluetooth() {
+  if ! is_pithree; then
+    whiptail --msgbox "Bluetooth configuration is only applicable to Pi3" 20 60 2
+    return 1
+  fi
+  DEFAULT=--defaultno
+  CURRENT=0
+  if [ $(get_bluetooth) -eq -1 ]; then
+    whiptail --msgbox "Device Tree overlay already exists" 20 60 1
+    return 1
+  fi
+  if [ $(get_bluetooth) -eq 0 ]; then
+      DEFAULT=
+      CURRENT=1
+  fi
+  if [ "$INTERACTIVE" = True ]; then
+    whiptail --yesno "Would you like Bluetooth to be enabled?" $DEFAULT 20 60 2
+    RET=$?
+  else
+    get_init_sys
+    RET=$1
+  fi
+  if [ $RET -eq $CURRENT ]; then
+    ASK_TO_REBOOT=1
+  fi
+  if [ $RET -eq 0 ]; then
+    clear_config_var dtoverlay $CONFIG
+    systemctl enable hciuart 
+    STATUS=enabled
+  elif [ $RET -eq 1 ]; then
+    set_config_var dtoverlay pi3-disable-bt $CONFIG
+    systemctl disable hciuart 
+    STATUS=disabled
+  else
+    return $RET
+  fi
+  if [ "$INTERACTIVE" = True ]; then
+      whiptail --msgbox "Bluetooth is $STATUS" 20 60 1
+  fi
+}
+
 disable_raspi_config_at_boot() {
   if [ -e /etc/profile.d/raspi-config.sh ]; then
     rm -f /etc/profile.d/raspi-config.sh
@@ -1453,6 +1512,7 @@ do_interface_menu() {
     "P6 Serial" "Enable/Disable shell and kernel messages on the serial connection" \
     "P7 1-Wire" "Enable/Disable one-wire interface" \
     "P8 Remote GPIO" "Enable/Disable remote access to GPIO pins" \
+    "P9 Bluetooth" "Enable/Disable Bluetooth" \
     3>&1 1>&2 2>&3)
   RET=$?
   if [ $RET -eq 1 ]; then
@@ -1467,6 +1527,7 @@ do_interface_menu() {
       P6\ *) do_serial ;;
       P7\ *) do_onewire ;;
       P8\ *) do_rgpio ;;
+      P9\ *) do_bluetooth ;;
       *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
   fi

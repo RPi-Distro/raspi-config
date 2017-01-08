@@ -761,9 +761,9 @@ do_serial() {
 
 get_bluetooth() {
   overlay=$(get_config_var dtoverlay $CONFIG)
-  if [ $overlay = 0 ]; then
+  if [ "$overlay" = "0" ]; then
     echo 0
-  elif [ $overlay = "pi3-disable-bt" ]; then
+  elif [ "$overlay" = "pi3-disable-bt" ]; then
     echo 1
   else
     echo -1 
@@ -777,11 +777,12 @@ do_bluetooth() {
   fi
   DEFAULT=--defaultno
   CURRENT=0
-  if [ $(get_bluetooth) -eq -1 ]; then
+  bluetooth=$(get_bluetooth)
+  if [ $bluetooth -eq -1 ]; then
     whiptail --msgbox "Device Tree overlay already exists" 20 60 1
     return 1
   fi
-  if [ $(get_bluetooth) -eq 0 ]; then
+  if [ $bluetooth -eq 0 ]; then
       DEFAULT=
       CURRENT=1
   fi

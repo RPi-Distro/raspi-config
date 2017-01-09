@@ -9,6 +9,11 @@ BLACKLIST=/etc/modprobe.d/raspi-blacklist.conf
 CONFIG=/boot/config.txt
 CMDLINE=/boot/cmdline.txt
 
+is_pi () {
+	grep -q BCM27 /proc/cpuinfo
+	return $?
+}
+
 is_pione() {
    if grep -q "^Revision\s*:\s*00[0-9a-fA-F][0-9a-fA-F]$" /proc/cpuinfo; then
       return 0
@@ -1504,58 +1509,60 @@ do_internationalisation_menu() {
 }
 
 do_interface_menu() {
-  FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Interfacing Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-    "P1 Camera" "Enable/Disable connection to the Raspberry Pi Camera" \
-    "P2 SSH" "Enable/Disable remote command line access to your Pi using SSH" \
-    "P3 VNC" "Enable/Disable graphical remote access to your Pi using RealVNC" \
-    "P4 SPI" "Enable/Disable automatic loading of SPI kernel module (needed for e.g. PiFace)" \
-    "P5 I2C" "Enable/Disable automatic loading of I2C kernel module" \
-    "P6 Serial" "Enable/Disable shell and kernel messages on the serial connection" \
-    "P7 1-Wire" "Enable/Disable one-wire interface" \
-    "P8 Remote GPIO" "Enable/Disable remote access to GPIO pins" \
-    "P9 Bluetooth" "Enable/Disable Bluetooth" \
-    3>&1 1>&2 2>&3)
-  RET=$?
-  if [ $RET -eq 1 ]; then
-    return 0
-  elif [ $RET -eq 0 ]; then
-    case "$FUN" in
-      P1\ *) do_camera ;;
-      P2\ *) do_ssh ;;
-      P3\ *) do_vnc ;;
-      P4\ *) do_spi ;;
-      P5\ *) do_i2c ;;
-      P6\ *) do_serial ;;
-      P7\ *) do_onewire ;;
-      P8\ *) do_rgpio ;;
-      P9\ *) do_bluetooth ;;
-      *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
-    esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
+  if ! is_pi ; then
+	  do_ssh
+  else
+    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Interfacing Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+      "P1 Camera" "Enable/Disable connection to the Raspberry Pi Camera" \
+      "P2 SSH" "Enable/Disable remote command line access to your Pi using SSH" \
+      "P3 VNC" "Enable/Disable graphical remote access to your Pi using RealVNC" \
+      "P4 SPI" "Enable/Disable automatic loading of SPI kernel module" \
+      "P5 I2C" "Enable/Disable automatic loading of I2C kernel module" \
+      "P6 Serial" "Enable/Disable shell and kernel messages on the serial connection" \
+      "P7 1-Wire" "Enable/Disable one-wire interface" \
+      "P8 Remote GPIO" "Enable/Disable remote access to GPIO pins" \
+      "P9 Bluetooth" "Enable/Disable Bluetooth" \
+      3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -eq 1 ]; then
+      return 0
+    elif [ $RET -eq 0 ]; then
+      case "$FUN" in
+        P1\ *) do_camera ;;
+        P2\ *) do_ssh ;;
+        P3\ *) do_vnc ;;
+        P4\ *) do_spi ;;
+        P5\ *) do_i2c ;;
+        P6\ *) do_serial ;;
+        P7\ *) do_onewire ;;
+        P8\ *) do_rgpio ;;
+        P9\ *) do_bluetooth ;;
+        *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
+      esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
+    fi
   fi
 }
 
 do_advanced_menu() {
   FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Advanced Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-    "A1 Overscan" "You may need to configure overscan if black bars are present on display" \
-    "A2 Hostname" "Set the visible name for this Pi on a network" \
+    "A1 Expand Filesystem" "Ensures that all of the SD card storage is available to the OS" \
+    "A2 Overscan" "You may need to configure overscan if black bars are present on display" \
     "A3 Memory Split" "Change the amount of memory made available to the GPU" \
     "A4 Audio" "Force audio out through HDMI or 3.5mm jack" \
     "A5 Resolution" "Set a specific screen resolution" \
     "A6 GL Driver" "Enable/Disable experimental desktop GL driver" \
-    "A0 Update" "Update this tool to the latest version" \
     3>&1 1>&2 2>&3)
   RET=$?
   if [ $RET -eq 1 ]; then
     return 0
   elif [ $RET -eq 0 ]; then
     case "$FUN" in
-      A1\ *) do_overscan ;;
-      A2\ *) do_hostname ;;
+      A1\ *) do_expand_rootfs ;;
+      A2\ *) do_overscan ;;
       A3\ *) do_memory_split ;;
       A4\ *) do_audio ;;
       A5\ *) do_resolution ;;
       A6\ *) do_gldriver ;;
-      A0\ *) do_update ;;
       *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
   fi
@@ -1584,7 +1591,7 @@ do_boot_menu() {
 # Interactive use loop
 #
 if [ "$INTERACTIVE" = True ]; then
-  if ! mountpoint -q /boot; then
+  if is_pi && ! mountpoint -q /boot; then
     whiptail --msgbox "The boot partition is not mounted - cannot configure. Note that raspi-config is intended for use on Raspbian only and cannot be guaranteed to work on other operating systems." 20 60 1
     exit 1
   fi
@@ -1592,29 +1599,43 @@ if [ "$INTERACTIVE" = True ]; then
   get_init_sys
   calc_wt_size
   while true; do
-    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Setup Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Finish --ok-button Select \
-      "1 Expand Filesystem" "Ensures that all of the SD card storage is available to the OS" \
-      "2 Change User Password" "Change password for the default user (pi)" \
-      "3 Boot Options" "Configure options for start-up" \
-      "4 Localisation Options" "Set up language and regional settings to match your location" \
-      "5 Interfacing Options" "Configure connections to peripherals" \
-      "6 Overclock" "Configure overclocking for your Pi" \
-      "7 Advanced Options" "Configure advanced settings" \
-      "8 About raspi-config" "Information about this configuration tool" \
-      3>&1 1>&2 2>&3)
+	if is_pi ; then
+      FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Setup Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Finish --ok-button Select \
+        "1 Change User Password" "Change password for the default user (pi)" \
+        "2 Hostname" "Set the visible name for this Pi on a network" \
+        "3 Boot Options" "Configure options for start-up" \
+        "4 Localisation Options" "Set up language and regional settings to match your location" \
+        "5 Interfacing Options" "Configure connections to peripherals" \
+        "6 Overclock" "Configure overclocking for your Pi" \
+        "7 Advanced Options" "Configure advanced settings" \
+        "8 Update" "Update this tool to the latest version" \
+        "9 About raspi-config" "Information about this configuration tool" \
+        3>&1 1>&2 2>&3)
+    else
+      FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Setup Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Finish --ok-button Select \
+        "1 Change User Password" "Change password for the default user (pi)" \
+        "2 Hostname" "Set the visible name for this PC on a network" \
+        "3 Boot Options" "Configure options for start-up" \
+        "4 Localisation Options" "Set up language and regional settings to match your location" \
+        "5 SSH" "Enable/Disable remote command line access to your PC using SSH" \
+        "8 Update" "Update this tool to the latest version" \
+        "9 About raspi-config" "Information about this configuration tool" \
+        3>&1 1>&2 2>&3)
+    fi
     RET=$?
     if [ $RET -eq 1 ]; then
       do_finish
     elif [ $RET -eq 0 ]; then
       case "$FUN" in
-        1\ *) do_expand_rootfs ;;
-        2\ *) do_change_pass ;;
+        1\ *) do_change_pass ;;
+        2\ *) do_hostname ;;
         3\ *) do_boot_menu ;;
         4\ *) do_internationalisation_menu ;;
         5\ *) do_interface_menu ;;
         6\ *) do_overclock ;;
         7\ *) do_advanced_menu ;;
-        8\ *) do_about ;;
+        8\ *) do_update ;;
+        9\ *) do_about ;;
         *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
       esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
     else

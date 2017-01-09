@@ -1194,11 +1194,15 @@ do_update() {
 }
 
 do_audio() {
-  AUDIO_OUT=$(whiptail --menu "Choose the audio output" 20 60 10 \
-    "0" "Auto" \
-    "1" "Force 3.5mm ('headphone') jack" \
-    "2" "Force HDMI" \
-    3>&1 1>&2 2>&3)
+  if [ "$INTERACTIVE" = True ]; then
+    AUDIO_OUT=$(whiptail --menu "Choose the audio output" 20 60 10 \
+      "0" "Auto" \
+      "1" "Force 3.5mm ('headphone') jack" \
+      "2" "Force HDMI" \
+      3>&1 1>&2 2>&3)
+  else
+    AUDIO_OUT=$1
+  fi
   if [ $? -eq 0 ]; then
     amixer cset numid=3 "$AUDIO_OUT"
   fi

@@ -765,13 +765,10 @@ do_serial() {
 }
 
 get_bluetooth() {
-  overlay=$(get_config_var dtoverlay $CONFIG)
-  if [ "$overlay" = "0" ]; then
-    echo 0
-  elif [ "$overlay" = "pi3-disable-bt" ]; then
+  if grep -q -E "^dtoverlay=pi3-disable-bt" $CONFIG; then
     echo 1
   else
-    echo -1 
+    echo 0
   fi
 }
 
@@ -782,40 +779,37 @@ do_bluetooth() {
   fi
   DEFAULT=--defaultno
   CURRENT=0
-  bluetooth=$(get_bluetooth)
-  if [ $bluetooth -eq -1 ]; then
-    whiptail --msgbox "Device Tree overlay already exists" 20 60 1
-    return 1
-  fi
-  if [ $bluetooth -eq 0 ]; then
-      DEFAULT=
-      CURRENT=1
+  if [ $(get_bluetooth) -eq 0 ]; then
+    DEFAULT=
+    CURRENT=1
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like Bluetooth to be enabled?" $DEFAULT 20 60 2
+    whiptail --yesno "Would you like the Bluetooth interface to be enabled?" $DEFAULT 20 60 2
     RET=$?
   else
-    get_init_sys
     RET=$1
   fi
   if [ $RET -eq $CURRENT ]; then
     ASK_TO_REBOOT=1
   fi
-  if [ $RET -eq 0 ]; then
-    clear_config_var dtoverlay $CONFIG
-    systemctl enable hciuart 
-    STATUS=enabled
-  elif [ $RET -eq 1 ]; then
-    set_config_var dtoverlay pi3-disable-bt $CONFIG
-    systemctl disable hciuart 
+  if [ $RET -eq 1 ]; then
+    sed $CONFIG -i -e "s/^#dtoverlay=pi3-disable-bt/dtoverlay=pi3-disable-bt/"
+    if ! grep -q -E "^dtoverlay=pi3-disable-bt" $CONFIG; then
+      printf "# Comment the following line to enable Bluetooth\n" >> $CONFIG
+      printf "dtoverlay=pi3-disable-bt\n" >> $CONFIG
+    fi
     STATUS=disabled
+  elif [ $RET -eq 0 ]; then
+    sed $CONFIG -i -e "s/^dtoverlay=pi3-disable-bt/#dtoverlay=pi3-disable-bt/"
+    STATUS=enabled
   else
     return $RET
   fi
   if [ "$INTERACTIVE" = True ]; then
-      whiptail --msgbox "Bluetooth is $STATUS" 20 60 1
+    whiptail --msgbox "The Bluetooth interface is $STATUS" 20 60 1
   fi
 }
+
 
 disable_raspi_config_at_boot() {
   if [ -e /etc/profile.d/raspi-config.sh ]; then

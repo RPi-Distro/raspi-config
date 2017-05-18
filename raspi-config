@@ -6,7 +6,7 @@
 INTERACTIVE=True
 ASK_TO_REBOOT=0
 BLACKLIST=/etc/modprobe.d/raspi-blacklist.conf
-CONFIG=/boot/config.txt
+CONFIG=${1:-/boot/config.txt}
 
 is_pi () {
 	grep -q "^model name\s*:\s*ARMv" /proc/cpuinfo

@@ -1382,17 +1382,17 @@ do_finish() {
   exit 0
 }
 
-# $1 = filename, $2 = key name
+# $1 = key to look for in JSON payload, e.g.:  "['parent']['child']"
 get_json_string_val() {
-  sed -n -e "s/^[[:space:]]*\"$2\"[[:space:]]*:[[:space:]]*\"\(.*\)\"[[:space:]]*,$/\1/p" $1
+  python -c "import sys,json;sys.stdout.write(json.dumps(json.load(sys.stdin)$1))"
 }
 
 # TODO: This is probably broken
 do_apply_os_config() {
   [ -e /boot/os_config.json ] || return 0
-  NOOBSFLAVOUR=$(get_json_string_val /boot/os_config.json flavour)
-  NOOBSLANGUAGE=$(get_json_string_val /boot/os_config.json language)
-  NOOBSKEYBOARD=$(get_json_string_val /boot/os_config.json keyboard)
+  NOOBSFLAVOUR=$(cat /boot/os_config.json | get_json_string_val "['flavour']")
+  NOOBSLANGUAGE=$(cat /boot/os_config.json | get_json_string_val "['language']")
+  NOOBSKEYBOARD=$(cat /boot/os_config.json | get_json_string_val "['keyboard']")
 
   if [ -n "$NOOBSFLAVOUR" ]; then
     printf "Setting flavour to %s based on os_config.json from NOOBS. May take a while\n" "$NOOBSFLAVOUR"

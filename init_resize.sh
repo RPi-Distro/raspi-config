@@ -150,12 +150,16 @@ main () {
       FAIL_REASON="Extended partition resize failed"
       return 1
     fi
+    OK_REASON="Resized root filesystem.\n"
   fi
 
+if (whiptail --title "Partition resize" --yesno "Do you want to resize root filesystem to fit entire card?" 7 61); then
   if ! parted -m "$ROOT_DEV" u s resizepart "$ROOT_PART_NUM" "$TARGET_END"; then
     FAIL_REASON="Root partition resize failed"
     return 1
   fi
+  OK_REASON="Resized root filesystem.\n"
+fi
 
   partprobe "$ROOT_DEV"
   fix_partuuid
@@ -184,7 +188,7 @@ if ! check_commands; then
 fi
 
 if main; then
-  whiptail --infobox "Resized root filesystem. Rebooting in 5 seconds..." 20 60
+  whiptail --infobox "${OK_REASON}Rebooting in 5 seconds..." 20 60
   sleep 5
 else
   sleep 5

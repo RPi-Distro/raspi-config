@@ -1294,6 +1294,110 @@ do_resolution() {
   fi
 }
 
+remove_network_block() {
+  # Escape special characters to avoid screwing up regex below
+  # Escape '\' separately because it would mix up with others
+  local ssid=$(echo "$1" | sed 's;\\;\\\\;g' | sed -e 's;\.;\\\.;g'  \
+                                                   -e 's;\*;\\\*;g'  \
+                                                   -e 's;\+;\\\+;g'  \
+                                                   -e 's;\?;\\\?;g'  \
+                                                   -e 's;\^;\\\^;g'  \
+                                                   -e 's;\$;\\\$;g'  \
+                                                   -e 's;\/;\\\/;g'  \
+                                                   -e 's;\[;\\\[;g'  \
+                                                   -e 's;\];\\\];g'  \
+                                                   -e 's;{;\\{;g'    \
+                                                   -e 's;};\\};g'    \
+                                                   -e 's;(;\\(;g'    \
+                                                   -e 's;);\\);g')
+
+  # Match the following and remove it:
+  # ^\s*network=\{        ==>  network block begins
+  # (?:(?!^\s*\}.*$).)*?  ==>  no block ending in between
+  # ^\s*ssid="..."        ==>  target SSID
+  # ^\s*\}                ==>  network block ends
+  perl -i -pe 'BEGIN{undef $/;} s/^\s*network=\{(?:(?!^\s*\}.*$).)*?^\s*ssid="'$ssid'".*?^\s*\}.*?\n//smg' /etc/wpa_supplicant/wpa_supplicant.conf
+}
+
+append_nokey_network_block() {
+  local ssid=$1
+  
+  cat <<EOT >> /etc/wpa_supplicant/wpa_supplicant.conf
+network={
+    ssid="$ssid"
+    key_mgmt=NONE
+}
+EOT
+}
+
+append_wpa_network_block() {
+  local ssid=$1
+  local passphrase=$2
+  local out=
+
+  if out=$(wpa_passphrase "$ssid" "$passphrase"); then
+    echo "$out" | tee -a /etc/wpa_supplicant/wpa_supplicant.conf > /dev/null
+  fi
+}
+
+do_wifi_ssid_passphrase() {
+  HOTSPOTS=$(iwlist wlan0 scan |
+             grep -e ESSID -e Quality |
+             sed 'N;s/\n//' |    # merge SSID and Quality into one line
+             sed 's/^.*Quality=\([0-9\/]*\).*ESSID:"\(.*\)".*$/\2 \1/')
+
+  # What if SSID contains spaces or double-quotes?
+
+  if [ -z "$HOTSPOTS" ]; then
+    whiptail --yesno "No hotspot found. Do you want to enter SSID manually?" 20 60
+    if [ $? -ne 0 ]; then
+      return 0
+    else
+      SSID=
+    fi
+  else
+    SSID=$(whiptail --menu "Pick a hotspot" 20 60 10 --cancel-button "Enter SSID manually" --ok-button Select \
+      $HOTSPOTS \
+      3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -eq 1 ]; then
+      SSID=
+    elif [ $RET -ne 0 ]; then
+      return 0
+    fi
+  fi
+
+  while [ -z "$SSID" ]; do
+    SSID=$(whiptail --inputbox "Please enter SSID" 20 60 3>&1 1>&2 2>&3)
+    if [ $? -ne 0 ]; then
+      return 0
+    elif [ -z "$SSID" ]; then
+      whiptail --msgbox "SSID cannot be empty. Please try again." 20 60
+    fi
+  done
+
+  while true; do
+    PASSPHRASE=$(whiptail --passwordbox "Please enter passphrase. Leave it empty if none." 20 60 3>&1 1>&2 2>&3)
+    if [ $? -ne 0 ]; then
+      return 0
+    elif [ -z "$PASSPHRASE" ] || WPA_OUT=$(wpa_passphrase "$SSID" "$PASSPHRASE"); then
+      break
+    else
+      whiptail --msgbox "${WPA_OUT}. Please try again." 20 60
+    fi
+  done
+
+  remove_network_block "$SSID"
+
+  if [ -z "$PASSPHRASE" ]; then
+    append_nokey_network_block "$SSID"
+  else
+    append_wpa_network_block "$SSID" "$PASSPHRASE"
+  fi
+
+  ASK_TO_REBOOT=1
+}
+
 do_finish() {
   disable_raspi_config_at_boot
   if [ $ASK_TO_REBOOT -eq 1 ]; then
@@ -1519,7 +1623,6 @@ do_advanced_menu() {
     "A4 Audio" "Force audio out through HDMI or 3.5mm jack" \
     "A5 Resolution" "Set a specific screen resolution" \
     "A6 GL Driver" "Enable/Disable experimental desktop GL driver" \
-    "A7 Network interface names" "Enable/Disable predictable network interface names" \
     3>&1 1>&2 2>&3)
   RET=$?
   if [ $RET -eq 1 ]; then
@@ -1532,7 +1635,6 @@ do_advanced_menu() {
       A4\ *) do_audio ;;
       A5\ *) do_resolution ;;
       A6\ *) do_gldriver ;;
-      A7\ *) do_net_names ;;
       *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
   fi
@@ -1564,6 +1666,25 @@ do_boot_menu() {
   fi
 }
 
+do_network_menu() {
+  FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Network Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+    "N1 Hostname" "Set the visible name for this Pi on a network" \
+    "N2 Wi-fi" "Enter SSID and passphrase" \
+    "N3 Network interface names" "Enable/Disable predictable network interface names" \
+    3>&1 1>&2 2>&3)
+  RET=$?
+  if [ $RET -eq 1 ]; then
+    return 0
+  elif [ $RET -eq 0 ]; then
+    case "$FUN" in
+      N1\ *) do_hostname ;;
+      N2\ *) do_wifi_ssid_passphrase ;;
+      N3\ *) do_net_names ;;
+      *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
+    esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
+  fi
+}
+
 #
 # Interactive use loop
 #
@@ -1578,7 +1699,7 @@ if [ "$INTERACTIVE" = True ]; then
 	if is_pi ; then
       FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --backtitle "$(cat /proc/device-tree/model)" --menu "Setup Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Finish --ok-button Select \
         "1 Change User Password" "Change password for the current user" \
-        "2 Hostname" "Set the visible name for this Pi on a network" \
+        "2 Network Options" "Configure network settings" \
         "3 Boot Options" "Configure options for start-up" \
         "4 Localisation Options" "Set up language and regional settings to match your location" \
         "5 Interfacing Options" "Configure connections to peripherals" \
@@ -1604,7 +1725,7 @@ if [ "$INTERACTIVE" = True ]; then
     elif [ $RET -eq 0 ]; then
       case "$FUN" in
         1\ *) do_change_pass ;;
-        2\ *) do_hostname ;;
+        2\ *) do_network_menu ;;
         3\ *) do_boot_menu ;;
         4\ *) do_internationalisation_menu ;;
         5\ *) do_interface_menu ;;

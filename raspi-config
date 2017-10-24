@@ -293,7 +293,7 @@ do_configure_keyboard() {
   dpkg-reconfigure keyboard-configuration &&
   printf "Reloading keymap. This may take a short while\n" &&
   invoke-rc.d keyboard-setup start || return $?
-  setupcon --save-only
+  setsid sh -c 'exec sudo setupcon <> /dev/tty1 >&0 2>&1'
   udevadm trigger --subsystem-match=input --action=change
   return 0
 }

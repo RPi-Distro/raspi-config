@@ -1294,54 +1294,29 @@ do_resolution() {
   fi
 }
 
-remove_network_block() {
-  # Escape special characters to avoid screwing up regex below
-  # Escape '\' separately because it would mix up with others
-  local ssid=$(echo "$1" | sed 's;\\;\\\\;g' | sed -e 's;\.;\\\.;g'  \
-                                                   -e 's;\*;\\\*;g'  \
-                                                   -e 's;\+;\\\+;g'  \
-                                                   -e 's;\?;\\\?;g'  \
-                                                   -e 's;\^;\\\^;g'  \
-                                                   -e 's;\$;\\\$;g'  \
-                                                   -e 's;\/;\\\/;g'  \
-                                                   -e 's;\[;\\\[;g'  \
-                                                   -e 's;\];\\\];g'  \
-                                                   -e 's;{;\\{;g'    \
-                                                   -e 's;};\\};g'    \
-                                                   -e 's;(;\\(;g'    \
-                                                   -e 's;);\\);g')
-
-  # Match the following and remove it:
-  # ^\s*network=\{        ==>  network block begins
-  # (?:(?!^\s*\}.*$).)*?  ==>  no block ending in between
-  # ^\s*ssid="..."        ==>  target SSID
-  # ^\s*\}                ==>  network block ends
-  perl -i -pe 'BEGIN{undef $/;} s/^\s*network=\{(?:(?!^\s*\}.*$).)*?^\s*ssid="'$ssid'".*?^\s*\}.*?\n//smg' /etc/wpa_supplicant/wpa_supplicant.conf
-}
-
-append_nokey_network_block() {
-  local ssid=$1
-
-  cat <<EOT >> /etc/wpa_supplicant/wpa_supplicant.conf
-network={
-    ssid="$ssid"
-    key_mgmt=NONE
-}
-EOT
-}
-
-append_wpa_network_block() {
-  local ssid=$1
-  local passphrase=$2
-  local out=
-
-  if out=$(wpa_passphrase "$ssid" "$passphrase"); then
-    echo "$out" >> /etc/wpa_supplicant/wpa_supplicant.conf
-  fi
+list_wlan_interfaces() {
+  for dir in /sys/class/net/*/wireless; do
+    if [ -d "$dir" ]; then
+      basename "$(dirname "$dir")"
+    fi
+  done
 }
 
 do_wifi_ssid_passphrase() {
-  SSID=
+  RET=0
+  IFACE_LIST="$(list_wlan_interfaces)"
+  IFACE="$(echo "$IFACE_LIST" | head -n 1)"
+
+  if [ -z "$IFACE" ]; then
+    whiptail --msgbox "No wireless interface found" 20 60
+    return 1
+  fi
+
+  if ! wpa_cli -i "$IFACE" status > /dev/null 2>&1; then
+    whiptail --msgbox "Could not communicate with wpa_supplicant" 20 60
+    return 1
+  fi
+
   while [ -z "$SSID" ]; do
     SSID=$(whiptail --inputbox "Please enter SSID" 20 60 3>&1 1>&2 2>&3)
     if [ $? -ne 0 ]; then
@@ -1355,23 +1330,42 @@ do_wifi_ssid_passphrase() {
     PASSPHRASE=$(whiptail --passwordbox "Please enter passphrase. Leave it empty if none." 20 60 3>&1 1>&2 2>&3)
     if [ $? -ne 0 ]; then
       return 0
-    elif [ -z "$PASSPHRASE" ] || WPA_OUT=$(wpa_passphrase "$SSID" "$PASSPHRASE"); then
-      break
     else
-      whiptail --msgbox "${WPA_OUT}. Please try again." 20 60
+      break
     fi
   done
 
-  remove_network_block "$SSID"
+  wpa_cli -i "$IFACE" list_networks \
+   | tail -n +2 | cut -f -2 | grep -P "\t$SSID$" | cut -f1 \
+   | while read ID; do
+    wpa_cli -i "$IFACE" remove_network "$ID"
+  done
+
+  ID="$(wpa_cli -i "$IFACE" add_network)"
+  wpa_cli -i "$IFACE" set_network "$ID" ssid "\"$SSID\"" 2>&1 | grep -q "OK"
+  RET=$((RET + $?))
 
   if [ -z "$PASSPHRASE" ]; then
-    append_nokey_network_block "$SSID"
+    wpa_cli -i "$IFACE" set_network "$ID" key_mgmt NONE 2>&1 | grep -q "OK"
+    RET=$((RET + $?))
   else
-    append_wpa_network_block "$SSID" "$PASSPHRASE"
+    wpa_cli -i "$IFACE" set_network "$ID" psk "\"$PASSPHRASE\"" 2>&1 | grep -q "OK"
+    RET=$((RET + $?))
   fi
 
-  wpa_cli -i wlan0 reconfigure >/dev/null 2>&1
-  return 0
+  if [ $RET -eq 0 ]; then
+    wpa_cli -i "$IFACE" enable_network "$ID"
+  else
+    wpa_cli -i "$IFACE" remove_network "$ID"
+    whiptail --msgbox "Failed to set SSID or passphrase" 20 60
+  fi
+  wpa_cli -i "$IFACE" save_config
+
+  echo "$IFACE_LIST" | while read IFACE; do
+    wpa_cli -i "$IFACE" reconfigure
+  done
+
+  return $RET
 }
 
 do_finish() {

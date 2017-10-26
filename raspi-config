@@ -1338,7 +1338,7 @@ do_wifi_ssid_passphrase() {
   wpa_cli -i "$IFACE" list_networks \
    | tail -n +2 | cut -f -2 | grep -P "\t$SSID$" | cut -f1 \
    | while read ID; do
-    wpa_cli -i "$IFACE" remove_network "$ID"
+    wpa_cli -i "$IFACE" remove_network "$ID" > /dev/null 2>&1
   done
 
   ID="$(wpa_cli -i "$IFACE" add_network)"
@@ -1354,15 +1354,15 @@ do_wifi_ssid_passphrase() {
   fi
 
   if [ $RET -eq 0 ]; then
-    wpa_cli -i "$IFACE" enable_network "$ID"
+    wpa_cli -i "$IFACE" enable_network "$ID" > /dev/null 2>&1
   else
-    wpa_cli -i "$IFACE" remove_network "$ID"
+    wpa_cli -i "$IFACE" remove_network "$ID" > /dev/null 2>&1
     whiptail --msgbox "Failed to set SSID or passphrase" 20 60
   fi
-  wpa_cli -i "$IFACE" save_config
+  wpa_cli -i "$IFACE" save_config > /dev/null 2>&1
 
   echo "$IFACE_LIST" | while read IFACE; do
-    wpa_cli -i "$IFACE" reconfigure
+    wpa_cli -i "$IFACE" reconfigure > /dev/null 2>&1
   done
 
   return $RET

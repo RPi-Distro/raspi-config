@@ -293,7 +293,7 @@ do_configure_keyboard() {
   dpkg-reconfigure keyboard-configuration &&
   printf "Reloading keymap. This may take a short while\n" &&
   invoke-rc.d keyboard-setup start || return $?
-  setsid sh -c 'exec sudo setupcon <> /dev/tty1 >&0 2>&1'
+  setsid sh -c 'exec setupcon -k --force <> /dev/tty1 >&0 2>&1'
   udevadm trigger --subsystem-match=input --action=change
   return 0
 }
@@ -1455,6 +1455,7 @@ do_internationalisation_menu() {
   FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Localisation Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
     "I1 Change Locale" "Set up language and regional settings to match your location" \
     "I2 Change Timezone" "Set up timezone to match your location" \
+    "I3 Change Keyboard Layout" "Set the keyboard layout to match your keyboard" \
     "I4 Change Wi-fi Country" "Set the legal channels used in your country" \
     3>&1 1>&2 2>&3)
   else

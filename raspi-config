@@ -1317,6 +1317,7 @@ do_wifi_ssid_passphrase() {
     return 1
   fi
 
+  SSID=
   while [ -z "$SSID" ]; do
     SSID=$(whiptail --inputbox "Please enter SSID" 20 60 3>&1 1>&2 2>&3)
     if [ $? -ne 0 ]; then
@@ -1335,8 +1336,26 @@ do_wifi_ssid_passphrase() {
     fi
   done
 
+  # Escape special characters for embedding in regex below
+  local ssid=$(echo "$SSID" \
+   | sed 's;\\;\\\\;g' \
+   | sed -e 's;\.;\\\.;g' \
+         -e 's;\*;\\\*;g' \
+         -e 's;\+;\\\+;g' \
+         -e 's;\?;\\\?;g' \
+         -e 's;\^;\\\^;g' \
+         -e 's;\$;\\\$;g' \
+         -e 's;\/;\\\/;g' \
+         -e 's;\[;\\\[;g' \
+         -e 's;\];\\\];g' \
+         -e 's;{;\\{;g'   \
+         -e 's;};\\};g'   \
+         -e 's;(;\\(;g'   \
+         -e 's;);\\);g'   \
+         -e 's;";\\\\\";g')
+
   wpa_cli -i "$IFACE" list_networks \
-   | tail -n +2 | cut -f -2 | grep -P "\t$SSID$" | cut -f1 \
+   | tail -n +2 | cut -f -2 | grep -P "\t$ssid$" | cut -f1 \
    | while read ID; do
     wpa_cli -i "$IFACE" remove_network "$ID" > /dev/null 2>&1
   done

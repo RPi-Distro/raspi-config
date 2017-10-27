@@ -29,6 +29,11 @@ is_pione() {
    fi
 }
 
+is_pithree() {
+   grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]08[0-9a-fA-F]$" /proc/cpuinfo
+   return $?
+}
+
 is_pitwo() {
    grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]04[0-9a-fA-F]$" /proc/cpuinfo
    return $?
@@ -44,6 +49,8 @@ get_pi_type() {
       echo 1
    elif is_pitwo; then
       echo 2
+   elif is_pithree; then
+      echo 3
    else
       echo 0
    fi
@@ -766,6 +773,53 @@ do_serial() {
       whiptail --msgbox "The serial login shell is $SSTATUS\nThe serial interface is $HSTATUS" 20 60 1
   fi
 }
+
+get_bluetooth() {
+  if grep -q -E "^dtoverlay=pi3-disable-bt" $CONFIG; then
+    echo 1
+  else
+    echo 0
+  fi
+}
+
+do_bluetooth() {
+  if ! is_pithree; then
+    whiptail --msgbox "Bluetooth configuration is only applicable to Pi3" 20 60 2
+    return 1
+  fi
+  DEFAULT=--defaultno
+  CURRENT=0
+  if [ $(get_bluetooth) -eq 0 ]; then
+    DEFAULT=
+    CURRENT=1
+  fi
+  if [ "$INTERACTIVE" = True ]; then
+    whiptail --yesno "Would you like the Bluetooth interface to be enabled?" $DEFAULT 20 60 2
+    RET=$?
+  else
+    RET=$1
+  fi
+  if [ $RET -eq $CURRENT ]; then
+    ASK_TO_REBOOT=1
+  fi
+  if [ $RET -eq 1 ]; then
+    sed $CONFIG -i -e "s/^#dtoverlay=pi3-disable-bt/dtoverlay=pi3-disable-bt/"
+    if ! grep -q -E "^dtoverlay=pi3-disable-bt" $CONFIG; then
+      printf "# Comment the following line to enable Bluetooth\n" >> $CONFIG
+      printf "dtoverlay=pi3-disable-bt\n" >> $CONFIG
+    fi
+    STATUS=disabled
+  elif [ $RET -eq 0 ]; then
+    sed $CONFIG -i -e "s/^dtoverlay=pi3-disable-bt/#dtoverlay=pi3-disable-bt/"
+    STATUS=enabled
+  else
+    return $RET
+  fi
+  if [ "$INTERACTIVE" = True ]; then
+    whiptail --msgbox "The Bluetooth interface is $STATUS" 20 60 1
+  fi
+}
+
 
 disable_raspi_config_at_boot() {
   if [ -e /etc/profile.d/raspi-config.sh ]; then
@@ -1573,7 +1627,7 @@ do_internationalisation_menu() {
 
 do_interface_menu() {
   if ! is_pi ; then
-	do_ssh
+	  do_ssh
   else
     FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Interfacing Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
       "P1 Camera" "Enable/Disable connection to the Raspberry Pi Camera" \
@@ -1584,6 +1638,7 @@ do_interface_menu() {
       "P6 Serial" "Enable/Disable shell and kernel messages on the serial connection" \
       "P7 1-Wire" "Enable/Disable one-wire interface" \
       "P8 Remote GPIO" "Enable/Disable remote access to GPIO pins" \
+      "P9 Bluetooth" "Enable/Disable Bluetooth" \
       3>&1 1>&2 2>&3)
     RET=$?
     if [ $RET -eq 1 ]; then
@@ -1598,6 +1653,7 @@ do_interface_menu() {
         P6\ *) do_serial ;;
         P7\ *) do_onewire ;;
         P8\ *) do_rgpio ;;
+        P9\ *) do_bluetooth ;;
         *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
       esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
     fi

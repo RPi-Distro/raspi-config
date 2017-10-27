@@ -9,8 +9,8 @@ BLACKLIST=/etc/modprobe.d/raspi-blacklist.conf
 CONFIG=/boot/config.txt
 
 is_pi () {
-	grep -q "^model name\s*:\s*ARMv" /proc/cpuinfo
-	return $?
+  grep -q "^model name\s*:\s*ARMv" /proc/cpuinfo
+  return $?
 }
 
 if is_pi ; then
@@ -369,19 +369,19 @@ do_memory_split() { # Memory Split
   if [ -e /boot/start_cd.elf ]; then
     # New-style memory split setting
     ## get current memory split from /boot/config.txt
-	arm=$(vcgencmd get_mem arm | cut -d '=' -f 2 | cut -d 'M' -f 1)
-	gpu=$(vcgencmd get_mem gpu | cut -d '=' -f 2 | cut -d 'M' -f 1)
-	tot=$(($arm+$gpu))
+    arm=$(vcgencmd get_mem arm | cut -d '=' -f 2 | cut -d 'M' -f 1)
+    gpu=$(vcgencmd get_mem gpu | cut -d '=' -f 2 | cut -d 'M' -f 1)
+    tot=$(($arm+$gpu))
     if [ $tot -gt 512 ]; then
-		CUR_GPU_MEM=$(get_config_var gpu_mem_1024 $CONFIG)
-	elif [ $tot -gt 256 ]; then
-		CUR_GPU_MEM=$(get_config_var gpu_mem_512 $CONFIG)
-	else
-		CUR_GPU_MEM=$(get_config_var gpu_mem_256 $CONFIG)
-	fi
+      CUR_GPU_MEM=$(get_config_var gpu_mem_1024 $CONFIG)
+    elif [ $tot -gt 256 ]; then
+      CUR_GPU_MEM=$(get_config_var gpu_mem_512 $CONFIG)
+    else
+      CUR_GPU_MEM=$(get_config_var gpu_mem_256 $CONFIG)
+    fi
     if [ -z "$CUR_GPU_MEM" ] || [ $CUR_GPU_MEM = "0" ]; then
-		CUR_GPU_MEM=$(get_config_var gpu_mem $CONFIG)
-	fi
+      CUR_GPU_MEM=$(get_config_var gpu_mem $CONFIG)
+    fi
     [ -z "$CUR_GPU_MEM" ] || [ $CUR_GPU_MEM = "0" ] && CUR_GPU_MEM=64
     ## ask users what gpu_mem they want
     if [ "$INTERACTIVE" = True ]; then
@@ -392,14 +392,14 @@ do_memory_split() { # Memory Split
       true
     fi
     if [ $? -eq 0 ]; then
-	  if [ $(get_config_var gpu_mem_1024 $CONFIG) != "0" ] || [ $(get_config_var gpu_mem_512 $CONFIG) != "0" ] || [ $(get_config_var gpu_mem_256 $CONFIG) != "0" ]; then
+      if [ $(get_config_var gpu_mem_1024 $CONFIG) != "0" ] || [ $(get_config_var gpu_mem_512 $CONFIG) != "0" ] || [ $(get_config_var gpu_mem_256 $CONFIG) != "0" ]; then
         if [ "$INTERACTIVE" = True ]; then
-		  whiptail --msgbox "Device-specific memory settings were found. These have been cleared." 20 60 2
-		fi
-		clear_config_var gpu_mem_1024 $CONFIG
-		clear_config_var gpu_mem_512 $CONFIG
-		clear_config_var gpu_mem_256 $CONFIG
-	  fi
+          whiptail --msgbox "Device-specific memory settings were found. These have been cleared." 20 60 2
+        fi
+        clear_config_var gpu_mem_1024 $CONFIG
+        clear_config_var gpu_mem_512 $CONFIG
+        clear_config_var gpu_mem_256 $CONFIG
+      fi
       set_config_var gpu_mem "$NEW_GPU_MEM" $CONFIG
       ASK_TO_REBOOT=1
     fi
@@ -929,32 +929,32 @@ do_boot_splash() {
     RET=$1
   fi
   if [ $RET -eq 0 ]; then
-	if is_pi ; then
-		if ! grep -q "splash" $CMDLINE ; then
-			sed -i $CMDLINE -e "s/$/ quiet splash plymouth.ignore-serial-consoles/"
-		fi
-	else
-		sed -i /etc/default/grub -e "s/GRUB_CMDLINE_LINUX_DEFAULT=\"\(.*\)\"/GRUB_CMDLINE_LINUX_DEFAULT=\"\1 quiet splash plymouth.ignore-serial-consoles\"/"
-		sed -i /etc/default/grub -e "s/  \+/ /g"
-		sed -i /etc/default/grub -e "s/GRUB_CMDLINE_LINUX_DEFAULT=\" /GRUB_CMDLINE_LINUX_DEFAULT=\"/"
-		update-grub
-	fi
+    if is_pi ; then
+      if ! grep -q "splash" $CMDLINE ; then
+        sed -i $CMDLINE -e "s/$/ quiet splash plymouth.ignore-serial-consoles/"
+      fi
+    else
+      sed -i /etc/default/grub -e "s/GRUB_CMDLINE_LINUX_DEFAULT=\"\(.*\)\"/GRUB_CMDLINE_LINUX_DEFAULT=\"\1 quiet splash plymouth.ignore-serial-consoles\"/"
+      sed -i /etc/default/grub -e "s/  \+/ /g"
+      sed -i /etc/default/grub -e "s/GRUB_CMDLINE_LINUX_DEFAULT=\" /GRUB_CMDLINE_LINUX_DEFAULT=\"/"
+      update-grub
+    fi
     STATUS=enabled
   elif [ $RET -eq 1 ]; then
-	if is_pi ; then
-		if grep -q "splash" $CMDLINE ; then
-			sed -i $CMDLINE -e "s/ quiet//"
-			sed -i $CMDLINE -e "s/ splash//"
-			sed -i $CMDLINE -e "s/ plymouth.ignore-serial-consoles//"
-		fi
-	else
-		sed -i /etc/default/grub -e "s/GRUB_CMDLINE_LINUX_DEFAULT=\"\(.*\)quiet\(.*\)\"/GRUB_CMDLINE_LINUX_DEFAULT=\"\1\2\"/"
-		sed -i /etc/default/grub -e "s/GRUB_CMDLINE_LINUX_DEFAULT=\"\(.*\)splash\(.*\)\"/GRUB_CMDLINE_LINUX_DEFAULT=\"\1\2\"/"
-		sed -i /etc/default/grub -e "s/GRUB_CMDLINE_LINUX_DEFAULT=\"\(.*\)plymouth.ignore-serial-consoles\(.*\)\"/GRUB_CMDLINE_LINUX_DEFAULT=\"\1\2\"/"
-		sed -i /etc/default/grub -e "s/  \+/ /g"
-		sed -i /etc/default/grub -e "s/GRUB_CMDLINE_LINUX_DEFAULT=\" /GRUB_CMDLINE_LINUX_DEFAULT=\"/"
-		update-grub
-	fi
+    if is_pi ; then
+      if grep -q "splash" $CMDLINE ; then
+        sed -i $CMDLINE -e "s/ quiet//"
+        sed -i $CMDLINE -e "s/ splash//"
+        sed -i $CMDLINE -e "s/ plymouth.ignore-serial-consoles//"
+      fi
+    else
+      sed -i /etc/default/grub -e "s/GRUB_CMDLINE_LINUX_DEFAULT=\"\(.*\)quiet\(.*\)\"/GRUB_CMDLINE_LINUX_DEFAULT=\"\1\2\"/"
+      sed -i /etc/default/grub -e "s/GRUB_CMDLINE_LINUX_DEFAULT=\"\(.*\)splash\(.*\)\"/GRUB_CMDLINE_LINUX_DEFAULT=\"\1\2\"/"
+      sed -i /etc/default/grub -e "s/GRUB_CMDLINE_LINUX_DEFAULT=\"\(.*\)plymouth.ignore-serial-consoles\(.*\)\"/GRUB_CMDLINE_LINUX_DEFAULT=\"\1\2\"/"
+      sed -i /etc/default/grub -e "s/  \+/ /g"
+      sed -i /etc/default/grub -e "s/GRUB_CMDLINE_LINUX_DEFAULT=\" /GRUB_CMDLINE_LINUX_DEFAULT=\"/"
+      update-grub
+    fi
     STATUS=disabled
   else
     return $RET
@@ -1118,22 +1118,22 @@ do_gldriver() {
         if ! grep -q -E "^dtoverlay=vc4-kms-v3d" $CONFIG; then
           ASK_TO_REBOOT=1
         fi
-		sed $CONFIG -i -e "s/^dtoverlay=vc4-fkms-v3d/#dtoverlay=vc4-fkms-v3d/"
-		sed $CONFIG -i -e "s/^#dtoverlay=vc4-kms-v3d/dtoverlay=vc4-kms-v3d/"
-		if ! grep -q -E "^dtoverlay=vc4-kms-v3d" $CONFIG; then
-			printf "dtoverlay=vc4-kms-v3d\n" >> $CONFIG
-		fi
+        sed $CONFIG -i -e "s/^dtoverlay=vc4-fkms-v3d/#dtoverlay=vc4-fkms-v3d/"
+        sed $CONFIG -i -e "s/^#dtoverlay=vc4-kms-v3d/dtoverlay=vc4-kms-v3d/"
+        if ! grep -q -E "^dtoverlay=vc4-kms-v3d" $CONFIG; then
+          printf "dtoverlay=vc4-kms-v3d\n" >> $CONFIG
+        fi
         STATUS="The full KMS GL driver is enabled."
         ;;
       G2*)
         if ! grep -q -E "^dtoverlay=vc4-fkms-v3d" $CONFIG; then
           ASK_TO_REBOOT=1
         fi
-		sed $CONFIG -i -e "s/^dtoverlay=vc4-kms-v3d/#dtoverlay=vc4-kms-v3d/"
-		sed $CONFIG -i -e "s/^#dtoverlay=vc4-fkms-v3d/dtoverlay=vc4-fkms-v3d/"
-		if ! grep -q -E "^dtoverlay=vc4-fkms-v3d" $CONFIG; then
-			printf "dtoverlay=vc4-fkms-v3d\n" >> $CONFIG
-		fi
+        sed $CONFIG -i -e "s/^dtoverlay=vc4-kms-v3d/#dtoverlay=vc4-kms-v3d/"
+        sed $CONFIG -i -e "s/^#dtoverlay=vc4-fkms-v3d/dtoverlay=vc4-fkms-v3d/"
+        if ! grep -q -E "^dtoverlay=vc4-fkms-v3d" $CONFIG; then
+          printf "dtoverlay=vc4-fkms-v3d\n" >> $CONFIG
+        fi
         STATUS="The fake KMS GL driver is enabled."
         ;;
       G3*)
@@ -1154,10 +1154,10 @@ do_gldriver() {
   fi
   if echo "$GLOPT" | grep -q -E "1" ; then
     if grep -q "splash" $CMDLINE ; then
-	    sed -i $CMDLINE -e "s/ quiet//"
-	    sed -i $CMDLINE -e "s/ splash//"
-	    sed -i $CMDLINE -e "s/ plymouth.ignore-serial-consoles//"
-	fi
+      sed -i $CMDLINE -e "s/ quiet//"
+      sed -i $CMDLINE -e "s/ splash//"
+      sed -i $CMDLINE -e "s/ plymouth.ignore-serial-consoles//"
+    fi
     sed $CONFIG -i -e "s/^gpu_mem/#gpu_mem/"
   fi
   whiptail --msgbox "$STATUS" 20 60 1
@@ -1188,11 +1188,11 @@ do_net_names () {
     ASK_TO_REBOOT=1
   fi
   if [ $RET -eq 0 ]; then
-	sed -i $CMDLINE -e "s/net.ifnames=0 *//"
-	rm -f /etc/systemd/network/99-default.link
+    sed -i $CMDLINE -e "s/net.ifnames=0 *//"
+    rm -f /etc/systemd/network/99-default.link
     STATUS=enabled
   elif [ $RET -eq 1 ]; then
-	ln -sf /dev/null /etc/systemd/network/99-default.link
+    ln -sf /dev/null /etc/systemd/network/99-default.link
     STATUS=disabled
   else
     return $RET
@@ -1227,24 +1227,24 @@ do_audio() {
 
 do_resolution() {
   if [ "$INTERACTIVE" = True ]; then
-	CMODE=$(get_config_var hdmi_mode $CONFIG)
-	CGROUP=$(get_config_var hdmi_group $CONFIG)
-	if [ $CMODE -eq 0 ] ; then
-	  CSET="Default"
-	elif [ $CGROUP -eq 2 ] ; then
-	  CSET="DMT Mode "$CMODE
-	else
-	  CSET="CEA Mode "$CMODE
-	fi
+    CMODE=$(get_config_var hdmi_mode $CONFIG)
+    CGROUP=$(get_config_var hdmi_group $CONFIG)
+    if [ $CMODE -eq 0 ] ; then
+      CSET="Default"
+    elif [ $CGROUP -eq 2 ] ; then
+      CSET="DMT Mode "$CMODE
+    else
+      CSET="CEA Mode "$CMODE
+    fi
     oIFS="$IFS"
     IFS="/"
     if tvservice -d /dev/null | grep -q Nothing ; then
       value="Default/720x480/DMT Mode 4/640x480 60Hz 4:3/DMT Mode 9/800x600 60Hz 4:3/DMT Mode 16/1024x768 60Hz 4:3/DMT Mode 85/1280x720 60Hz 16:9/DMT Mode 35/1280x1024 60Hz 5:4/DMT Mode 51/1600x1200 60Hz 4:3/DMT Mode 82/1920x1080 60Hz 16:9/"
-	else
+    else
       value="Default/Monitor preferred resolution/"
       value=$value$(tvservice -m CEA | grep progressive | cut -b 12- | sed 's/mode \([0-9]\+\): \([0-9]\+\)x\([0-9]\+\) @ \([0-9]\+\)Hz \([0-9]\+\):\([0-9]\+\), clock:[0-9]\+MHz progressive/CEA Mode \1\/\2x\3 \4Hz \5:\6/' | tr '\n' '/')
       value=$value$(tvservice -m DMT | grep progressive | cut -b 12- | sed 's/mode \([0-9]\+\): \([0-9]\+\)x\([0-9]\+\) @ \([0-9]\+\)Hz \([0-9]\+\):\([0-9]\+\), clock:[0-9]\+MHz progressive/DMT Mode \1\/\2x\3 \4Hz \5:\6/' | tr '\n' '/')
-	fi
+    fi
     RES=$(whiptail --default-item $CSET --menu "Choose screen resolution" 20 60 10 ${value} 3>&1 1>&2 2>&3)
     STATUS=$?
     IFS=$oIFS
@@ -1252,45 +1252,45 @@ do_resolution() {
       GRS=$(echo "$RES" | cut -d ' ' -f 1)
       MODE=$(echo "$RES" | cut -d ' ' -f 3)
       if [ $GRS = "Default" ] ; then
-		MODE=0
+        MODE=0
       elif [ $GRS = "DMT" ] ; then
-	    GROUP=2
-	  else
-	    GROUP=1
-	  fi
-	fi
+        GROUP=2
+      else
+        GROUP=1
+      fi
+    fi
   else
     GROUP=$1
     MODE=$2
     STATUS=0
   fi
   if [ $STATUS -eq 0 ]; then
-	if [ $MODE -eq 0 ]; then
-	  clear_config_var hdmi_force_hotplug $CONFIG
-	  clear_config_var hdmi_group $CONFIG
-	  clear_config_var hdmi_mode $CONFIG
-	else
-	  set_config_var hdmi_force_hotplug 1 $CONFIG
-	  set_config_var hdmi_group $GROUP $CONFIG
-	  set_config_var hdmi_mode $MODE $CONFIG
-	fi
+    if [ $MODE -eq 0 ]; then
+      clear_config_var hdmi_force_hotplug $CONFIG
+      clear_config_var hdmi_group $CONFIG
+      clear_config_var hdmi_mode $CONFIG
+    else
+      set_config_var hdmi_force_hotplug 1 $CONFIG
+      set_config_var hdmi_group $GROUP $CONFIG
+      set_config_var hdmi_mode $MODE $CONFIG
+    fi
     if [ "$INTERACTIVE" = True ]; then
-	  if [ $MODE -eq 0 ] ; then
+      if [ $MODE -eq 0 ] ; then
         whiptail --msgbox "The resolution is set to default" 20 60 1
-	  else
+      else
         whiptail --msgbox "The resolution is set to $GRS mode $MODE" 20 60 1
       fi
     fi
-	if [ $MODE -eq 0 ] ; then
-	  TSET="Default"
-	elif [ $GROUP -eq 2 ] ; then
-	  TSET="DMT Mode "$MODE
-	else
-	  TSET="CEA Mode "$MODE
-	fi
-	if [ "$TSET" != "$CSET" ] ; then
-	  ASK_TO_REBOOT=1
-	fi
+    if [ $MODE -eq 0 ] ; then
+      TSET="Default"
+    elif [ $GROUP -eq 2 ] ; then
+      TSET="DMT Mode "$MODE
+    else
+      TSET="CEA Mode "$MODE
+    fi
+    if [ "$TSET" != "$CSET" ] ; then
+      ASK_TO_REBOOT=1
+    fi
   fi
 }
 
@@ -1573,7 +1573,7 @@ do_internationalisation_menu() {
 
 do_interface_menu() {
   if ! is_pi ; then
-	do_ssh
+    do_ssh
   else
     FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Interfacing Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
       "P1 Camera" "Enable/Disable connection to the Raspberry Pi Camera" \
@@ -1685,7 +1685,7 @@ if [ "$INTERACTIVE" = True ]; then
   [ -e $CONFIG ] || touch $CONFIG
   calc_wt_size
   while true; do
-	if is_pi ; then
+    if is_pi ; then
       FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --backtitle "$(cat /proc/device-tree/model)" --menu "Setup Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Finish --ok-button Select \
         "1 Change User Password" "Change password for the current user" \
         "2 Network Options" "Configure network settings" \

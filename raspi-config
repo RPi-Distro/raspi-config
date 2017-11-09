@@ -1204,11 +1204,17 @@ do_net_names () {
  }
 
 do_update() {
-  apt-get update &&
-  apt-get install raspi-config &&
-  printf "Sleeping 5 seconds before reloading raspi-config\n" &&
-  sleep 5 &&
-  exec raspi-config
+  if [ "$INTERACTIVE" = True ]; then
+    apt-get update &&
+    apt-get install raspi-config &&
+    printf "Sleeping 5 seconds before reloading raspi-config\n" &&
+    sleep 5 &&
+    exec raspi-config
+  else
+    apt-get update &&
+    apt-get install raspi-config
+  fi
+
 }
 
 do_audio() {
@@ -1519,6 +1525,11 @@ do
   --apply-os-config)
     INTERACTIVE=False
     do_apply_os_config
+    exit $?
+    ;;
+  --update-raspi-config)
+    INTERACTIVE=False
+    do_update
     exit $?
     ;;
   nonint)

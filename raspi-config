@@ -29,6 +29,11 @@ is_pione() {
    fi
 }
 
+is_pithree() {
+   grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F]20[8aA][0-9a-fA-F]$" /proc/cpuinfo
+   return $?
+}
+
 is_pitwo() {
    grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]04[0-9a-fA-F]$" /proc/cpuinfo
    return $?
@@ -44,6 +49,8 @@ get_pi_type() {
       echo 1
    elif is_pitwo; then
       echo 2
+   elif is_pithree; then
+      echo 3
    else
       echo 0
    fi
@@ -303,7 +310,13 @@ do_change_locale() {
 }
 
 do_change_timezone() {
-  dpkg-reconfigure tzdata
+  if [ "$INTERACTIVE" = True ]; then
+    dpkg-reconfigure tzdata
+  else
+    NEW_TIMEZONE=$1
+    bash -c "echo $NEW_TIMEZONE > /etc/timezone"
+    dpkg-reconfigure -f noninteractive tzdata
+  fi
 }
 
 get_wifi_country() {
@@ -1506,8 +1519,30 @@ do
     exit 1
     ;;
   --memory-split=*)
+    INTERACTIVE=False
     OPT_MEMORY_SPLIT=`echo $i | sed 's/[-a-zA-Z0-9]*=//'`
-    printf "Not currently supported\n"
+    do_memory_split $OPT_MEMORY_SPLIT
+    printf "Please reboot\n\n"
+    exit 1
+    ;;
+  --timezone=*)
+    INTERACTIVE=False
+    OPT_TIMEZONE=`echo $i | sed 's/[-a-zA-Z0-9]*=//'`
+    do_change_timezone $OPT_TIMEZONE
+    exit 1
+    ;;
+  --hostname=*)
+    INTERACTIVE=False
+    OPT_HOSTNAME=`echo $i | sed 's/[-a-zA-Z0-9]*=//'`
+    do_hostname $OPT_HOSTNAME
+    printf "Please reboot\n"
+    exit 1
+    ;;
+  --overclock=*)
+    INTERACTIVE=False
+    OPT_OVERCLOCKING=`echo $i | sed 's/[-a-zA-Z0-9]*=//'`
+    do_overclock $OPT_OVERCLOCKING
+    printf "Please reboot\n"
     exit 1
     ;;
   --expand-rootfs)

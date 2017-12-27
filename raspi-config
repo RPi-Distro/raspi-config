@@ -8,6 +8,9 @@ ASK_TO_REBOOT=0
 BLACKLIST=/etc/modprobe.d/raspi-blacklist.conf
 CONFIG=/boot/config.txt
 
+# Default to 'pi' if calling user cannot be determined.
+: ${SUDO_USER:=pi}
+
 is_pi () {
   ARCH=$(dpkg --print-architecture)
   if [ "$ARCH" = "armhf" ] ; then

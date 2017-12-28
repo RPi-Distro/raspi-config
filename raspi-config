@@ -8,7 +8,9 @@ ASK_TO_REBOOT=0
 BLACKLIST=/etc/modprobe.d/raspi-blacklist.conf
 CONFIG=/boot/config.txt
 
-# Default to 'pi' if calling user cannot be determined.
+# If SUDO_USER is not set, retrieve the user who logged in on the current
+# terminal. If that cannot be determined, default to "pi".
+: ${SUDO_USER:=$(who -m | awk '{ print $1 }')}
 : ${SUDO_USER:=pi}
 
 is_pi () {

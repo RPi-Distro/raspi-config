@@ -582,7 +582,7 @@ Be aware that overclocking may reduce the lifetime of your
 Raspberry Pi. If overclocking at a certain level causes
 system instability, try a more modest overclock. Hold down
 shift during boot to temporarily disable overclock.
-See http://elinux.org/RPi_Overclocking for more information.\
+See https://www.raspberrypi.org/documentation/configuration/config-txt/overclocking.md for more information.\
 " 20 70 1
    if is_pione; then
     OVERCLOCK=$(whiptail --menu "Choose overclock preset" 20 60 10 \

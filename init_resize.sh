@@ -150,11 +150,11 @@ main () {
       FAIL_REASON="Extended partition resize failed"
       return 1
     fi
-  fi
-
-  if ! parted -m "$ROOT_DEV" u s resizepart "$ROOT_PART_NUM" "$TARGET_END"; then
-    FAIL_REASON="Root partition resize failed"
-    return 1
+  else
+    if ! parted -m "$ROOT_DEV" u s resizepart "$ROOT_PART_NUM" "$TARGET_END"; then
+      FAIL_REASON="Root partition resize failed"
+      return 1
+    fi
   fi
 
   partprobe "$ROOT_DEV"

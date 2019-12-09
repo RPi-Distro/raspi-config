@@ -88,7 +88,7 @@ calc_wt_size() {
   # NOTE: it's tempting to redirect stderr to /dev/null, so supress error 
   # output from tput. However in this case, tput detects neither stdout or 
   # stderr is a tty and so only gives default 80, 24 values
-  WT_HEIGHT=17
+  WT_HEIGHT=18
   WT_WIDTH=$(tput cols)
 
   if [ -z "$WT_WIDTH" ] || [ "$WT_WIDTH" -lt 60 ]; then
@@ -302,6 +302,51 @@ do_overscan() {
   fi
   if [ "$INTERACTIVE" = True ]; then
     whiptail --msgbox "Display overscan compensation is $STATUS" 20 60 1
+  fi
+}
+
+get_blanking() {
+  if ! [ -f "/etc/X11/xorg.conf.d/10-blanking.conf" ]; then
+    echo 0
+  else
+    echo 1
+  fi
+}
+
+# shellcheck disable=SC2120
+do_blanking() {
+  DEFAULT=--defaultno
+  CURRENT=0
+  if [ "$(get_blanking)" -eq 0 ]; then
+      DEFAULT=
+      CURRENT=1
+  fi
+  if [ "$INTERACTIVE" = True ]; then
+    if [ "$(dpkg -l xscreensaver | tail -n 1 | cut -d ' ' -f 1)" = "ii" ]; then
+      whiptail --msgbox "Warning: xscreensaver is installed may override raspi-config settings" 20 60 2
+    fi
+    whiptail --yesno "Would you like to enable screen blanking?" $DEFAULT 20 60 2
+    RET=$?
+  else
+    RET=$1
+  fi
+  if [ "$RET" -eq "$CURRENT" ]; then
+    ASK_TO_REBOOT=1
+  fi
+  rm -f /etc/X11/xorg.conf.d/10-blanking.conf
+  sed -i '/^\o033/d' /etc/issue
+  if [ "$RET" -eq 0 ] ; then
+    STATUS=enabled
+  elif [ "$RET" -eq 1 ]; then
+    mkdir -p /etc/X11/xorg.conf.d/
+    cp /usr/share/raspi-config/10-blanking.conf /etc/X11/xorg.conf.d/
+    printf "\\033[9;0]" >> /etc/issue
+    STATUS=disabled
+  else
+    return "$RET"
+  fi
+  if [ "$INTERACTIVE" = True ]; then
+    whiptail --msgbox "Screen blanking is $STATUS" 20 60 1
   fi
 }
 
@@ -2151,11 +2196,12 @@ do_advanced_menu() {
     "A3 Memory Split" "Change the amount of memory made available to the GPU" \
     "A4 Audio" "Force audio out through HDMI or 3.5mm jack" \
     "A5 Resolution" "Set a specific screen resolution" \
-    "A6 Pixel Doubling" "Enable/Disable 2x2 pixel mapping" \
-    "A7 GL Driver" "Enable/Disable experimental desktop GL driver" \
-    "A8 Compositor" "Enable/Disable xcompmgr composition manager" \
-    "A9 Pi 4 Video Output" "Video output options for Pi 4" \
-    "AA Overlay FS" "Enable/Disable read-only file system" \
+    "A6 Screen Blanking" "Enable/Disable screen blanking" \
+    "A7 Pixel Doubling" "Enable/Disable 2x2 pixel mapping" \
+    "A8 GL Driver" "Enable/Disable experimental desktop GL driver" \
+    "A9 Compositor" "Enable/Disable xcompmgr composition manager" \
+    "AA Pi 4 Video Output" "Video output options for Pi 4" \
+    "AB Overlay FS" "Enable/Disable read-only file system" \
     3>&1 1>&2 2>&3)
   RET=$?
   if [ $RET -eq 1 ]; then
@@ -2167,11 +2213,12 @@ do_advanced_menu() {
       A3\ *) do_memory_split ;;
       A4\ *) do_audio ;;
       A5\ *) do_resolution ;;
-      A6\ *) do_pixdub ;;
-      A7\ *) do_gldriver ;;
-      A8\ *) do_xcompmgr ;;
-      A9\ *) do_pi4video ;;
-      AA\ *) do_overlayfs ;;
+      A6\ *) do_blanking ;;
+      A7\ *) do_pixdub ;;
+      A8\ *) do_gldriver ;;
+      A9\ *) do_xcompmgr ;;
+      AA\ *) do_pi4video ;;
+      AB\ *) do_overlayfs ;;
       *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
   fi

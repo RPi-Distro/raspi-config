@@ -1,3 +1,10 @@
+raspi-config (20191209) buster; urgency=medium
+
+  * Add option to enable/disable screen blanking
+  * Simplify source package
+
+ -- Serge Schneider <serge@raspberrypi.org>  Mon, 09 Dec 2019 16:20:44 +0000
+
 raspi-config (20191021) buster; urgency=medium
 
   * Add initramfs as dependency for overlayfs

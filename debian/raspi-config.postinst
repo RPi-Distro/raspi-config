@@ -8,4 +8,6 @@ if dpkg --compare-versions "${2}" lt-nl "20170619"; then
   update-rc.d -f raspi-config remove
 fi
 
+rmdir --ignore-fail-on-non-empty /etc/X11/xorg.conf.d/
+
 #DEBHELPER#

@@ -1,3 +1,9 @@
+raspi-config (20200109) UNRELEASED; urgency=medium
+
+  * Handle cases where SUDO_USER is unset
+
+ -- Serge Schneider <serge@raspberrypi.org>  Thu, 09 Jan 2020 14:38:50 +0000
+
 raspi-config (20191210) buster; urgency=medium
 
   * Fix postrm script

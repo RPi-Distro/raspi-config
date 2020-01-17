@@ -5,6 +5,7 @@ raspi-config (20200109) UNRELEASED; urgency=medium
   * Fix VNC options
   * Install required packages when changing GL settings
   * Add warning when enabling SSH
+  * OverlayFS - try loading module from rootfs
 
  -- Serge Schneider <serge@raspberrypi.org>  Thu, 09 Jan 2020 14:38:50 +0000
 

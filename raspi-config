@@ -1921,7 +1921,7 @@ local_mount_root()
 		mount -r ${ROOTFLAGS} ${ROOT} /lower
 	fi
 
-	modprobe overlay
+	modprobe overlay || insmod "/lower/lib/modules/$(uname -r)/kernel/fs/overlayfs/overlay.ko"
 
 	# Mount a tmpfs for the overlay in /upper
 	mount -t tmpfs tmpfs /upper

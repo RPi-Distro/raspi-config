@@ -567,7 +567,7 @@ do_wifi_country() {
         rfkill unblock wifi
     fi
     if [ "$INTERACTIVE" = True ]; then
-        whiptail --msgbox "Wi-fi country set to $COUNTRY" 20 60 1
+        whiptail --msgbox "Wi-Fi country set to $COUNTRY" 20 60 1
     fi
   fi
 }
@@ -2291,7 +2291,7 @@ do_internationalisation_menu() {
     "I1 Change Locale" "Set up language and regional settings to match your location" \
     "I2 Change Timezone" "Set up timezone to match your location" \
     "I3 Change Keyboard Layout" "Set the keyboard layout to match your keyboard" \
-    "I4 Change Wi-fi Country" "Set the legal channels used in your country" \
+    "I4 Change Wi-Fi Country" "Set the legal channels used in your country" \
     3>&1 1>&2 2>&3)
   RET=$?
   if [ $RET -eq 1 ]; then
@@ -2400,7 +2400,7 @@ do_boot_menu() {
 do_network_menu() {
   FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Network Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
     "N1 Hostname" "Set the visible name for this Pi on a network" \
-    "N2 Wi-fi" "Enter SSID and passphrase" \
+    "N2 Wi-Fi" "Enter SSID and passphrase" \
     "N3 Network interface names" "Enable/Disable predictable network interface names" \
     "N4 Network proxy settings" "Configure network proxy settings" \
     3>&1 1>&2 2>&3)

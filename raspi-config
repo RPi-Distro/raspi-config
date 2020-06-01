@@ -132,7 +132,7 @@ get_can_expand() {
     exit
   fi
 
-  LAST_PART_NUM=$(parted "ROOT_DEV" -ms unit s p | tail -n 1 | cut -f 1 -d:)
+  LAST_PART_NUM=$(parted "$ROOT_DEV" -ms unit s p | tail -n 1 | cut -f 1 -d:)
   if [ "$LAST_PART_NUM" -ne "$PART_NUM" ]; then
     echo 1
     exit

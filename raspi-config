@@ -2224,7 +2224,7 @@ do_overlayfs() {
     whiptail --yesno "Would you like the overlay file system to be enabled?" $DEFAULT 20 60 2
     RET=$?
   else
-    RET=$1
+    RET=0
   fi
   if [ $RET -eq $CURRENT ]; then
     if [ $RET -eq 0 ]; then
@@ -2268,7 +2268,7 @@ do_overlayfs() {
       whiptail --yesno "Would you like the boot partition to be write-protected?" $DEFAULT 20 60 2
       RET=$?
     else
-      RET=$1
+      RET=0
     fi
     if [ $RET -eq $CURRENT ]; then
       if [ $RET -eq 0 ]; then
@@ -2382,6 +2382,16 @@ do
     do_expand_rootfs
     printf "Please reboot\n"
     exit 0
+    ;;
+  --enable-overlayfs)
+    INTERACTIVE=False
+    do_overlayfs
+    exit $?
+    ;;
+  --disable-overlayfs)
+    INTERACTIVE=False
+    disable_overlayfs
+    exit $?
     ;;
   --apply-os-config)
     INTERACTIVE=False

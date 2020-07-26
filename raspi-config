@@ -1142,7 +1142,7 @@ ExecStart=-/sbin/agetty --autologin $USER --noclear %I \$TERM
 EOF
         ;;
       B3*)
-        if [ -e /etc/init.d/lightdm ]; then
+        if is_installed lightdm; then
           systemctl set-default graphical.target
           ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
           rm /etc/systemd/system/getty@tty1.service.d/autologin.conf
@@ -1154,7 +1154,7 @@ EOF
         fi
         ;;
       B4*)
-        if [ -e /etc/init.d/lightdm ]; then
+        if is_installed lightdm; then
           systemctl set-default graphical.target
           ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
           cat > /etc/systemd/system/getty@tty1.service.d/autologin.conf << EOF

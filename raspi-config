@@ -84,11 +84,7 @@ is_fkms() {
 }
 
 is_installed() {
-    if [ "$(dpkg -l "$1" 2> /dev/null | tail -n 1 | cut -d ' ' -f 1)" != "ii" ]; then
-      return 1
-    else
-      return 0
-    fi
+  pacman -Qq "$1" >/dev/null 2>&1 && return 0 || return 1
 }
 
 deb_ver () {

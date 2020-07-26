@@ -87,6 +87,14 @@ is_installed() {
   pacman -Qq "$1" >/dev/null 2>&1 && return 0 || return 1
 }
 
+install_package() {
+  apt-get install $@
+}
+
+update_package_database() {
+  apt-get update
+}
+
 deb_ver () {
   ver=`cat /etc/debian_version | cut -d . -f 1`
   echo $ver
@@ -803,7 +811,7 @@ do_vnc() {
     RET=$1
   fi
   if [ $RET -eq 0 ]; then
-    if is_installed realvnc-vnc-server || apt-get install realvnc-vnc-server; then
+    if is_installed realvnc-vnc-server || install_package realvnc-vnc-server; then
       systemctl enable vncserver-x11-serviced.service &&
       systemctl start vncserver-x11-serviced.service &&
       STATUS=enabled
@@ -1145,7 +1153,7 @@ EOF
           sed /etc/lightdm/lightdm.conf -i -e "s/^autologin-user=.*/#autologin-user=/"
           disable_raspi_config_at_boot
         else
-          whiptail --msgbox "Do 'sudo apt-get install lightdm' to allow configuration of boot to desktop" 20 60 2
+          whiptail --msgbox "Please install lightdm to allow configuration of boot to desktop" 20 60 2
           return 1
         fi
         ;;
@@ -1161,7 +1169,7 @@ EOF
           sed /etc/lightdm/lightdm.conf -i -e "s/^\(#\|\)autologin-user=.*/autologin-user=$USER/"
           disable_raspi_config_at_boot
         else
-          whiptail --msgbox "Do 'sudo apt-get install lightdm' to allow configuration of boot to desktop" 20 60 2
+          whiptail --msgbox "Please install lightdm to allow configuration of boot to desktop" 20 60 2
           return 1
         fi
         ;;
@@ -1551,7 +1559,7 @@ do_gldriver() {
       missing_packages="$package $missing_packages"
     fi
   done
-  if [ -n "$missing_packages" ] && ! apt-get install $missing_packages; then
+  if [ -n "$missing_packages" ] && ! install_package $missing_packages; then
     whiptail --msgbox "Required packages not found, please install: ${missing_packages}" 20 60 2
     return 1
   fi
@@ -1640,7 +1648,7 @@ do_xcompmgr() {
   fi
   if [ $RET -eq 0 ]; then
     if [ ! -e /usr/bin/xcompmgr ] ; then
-      apt-get -y install xcompmgr
+      install_package xcompmgr
     fi
     cat << EOF > /etc/xdg/autostart/xcompmgr.desktop
 [Desktop Entry]
@@ -1704,8 +1712,8 @@ do_net_names () {
  }
 
 do_update() {
-  apt-get update &&
-  apt-get install raspi-config &&
+  update_package_database &&
+  install_package raspi-config &&
   printf "Sleeping 5 seconds before reloading raspi-config\n" &&
   sleep 5 &&
   exec raspi-config

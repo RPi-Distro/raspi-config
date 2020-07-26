@@ -10,6 +10,8 @@ CONFIG=/boot/config.txt
 
 USER=${SUDO_USER:-$(who -m | awk '{ print $1 }')}
 
+PATH=$PATH:/opt/vc/bin
+
 is_pi () {
   ARCH=$(pacman-conf "Architecture")
   if [ "$ARCH" = "armv6h" ] || [ "$ARCH" = "armv7h" ] || [ "$ARCH" = "aarch64" ]; then

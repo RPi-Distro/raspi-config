@@ -215,7 +215,7 @@ EOF
 }
 
 set_config_var() {
-  lua - "$1" "$2" "$3" <<EOF > "$3.bak"
+  lua5.1 - "$1" "$2" "$3" <<EOF > "$3.bak"
 local key=assert(arg[1])
 local value=assert(arg[2])
 local fn=assert(arg[3])
@@ -237,7 +237,7 @@ mv "$3.bak" "$3"
 }
 
 clear_config_var() {
-  lua - "$1" "$2" <<EOF > "$2.bak"
+  lua5.1 - "$1" "$2" <<EOF > "$2.bak"
 local key=assert(arg[1])
 local fn=assert(arg[2])
 local file=assert(io.open(fn))
@@ -252,7 +252,7 @@ mv "$2.bak" "$2"
 }
 
 get_config_var() {
-  lua - "$1" "$2" <<EOF
+  lua5.1 - "$1" "$2" <<EOF
 local key=assert(arg[1])
 local fn=assert(arg[2])
 local file=assert(io.open(fn))

@@ -6,6 +6,7 @@
 INTERACTIVE=True
 ASK_TO_REBOOT=0
 BLACKLIST=/etc/modprobe.d/raspi-blacklist.conf
+MODULES=/etc/modules-load.d/raspi-conf.conf
 CONFIG=/boot/config.txt
 
 USER=${SUDO_USER:-$(who -m | awk '{ print $1 }')}
@@ -903,9 +904,9 @@ do_i2c() {
     touch $BLACKLIST
   fi
   sed $BLACKLIST -i -e "s/^\(blacklist[[:space:]]*i2c[-_]bcm2708\)/#\1/"
-  sed /etc/modules -i -e "s/^#[[:space:]]*\(i2c[-_]dev\)/\1/"
-  if ! grep -q "^i2c[-_]dev" /etc/modules; then
-    printf "i2c-dev\n" >> /etc/modules
+  sed $MODULES -i -e "s/^#[[:space:]]*\(i2c[-_]dev\)/\1/"
+  if ! grep -q "^i2c[-_]dev" $MODULES; then
+    printf "i2c-dev\n" >> $MODULES
   fi
   dtparam i2c_arm=$SETTING
   modprobe i2c-dev

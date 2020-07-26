@@ -11,8 +11,8 @@ CONFIG=/boot/config.txt
 USER=${SUDO_USER:-$(who -m | awk '{ print $1 }')}
 
 is_pi () {
-  ARCH=$(dpkg --print-architecture)
-  if [ "$ARCH" = "armhf" ] || [ "$ARCH" = "arm64" ] ; then
+  ARCH=$(pacman-conf "Architecture")
+  if [ "$ARCH" = "armv6h" ] || [ "$ARCH" = "armv7h" ] || [ "$ARCH" = "aarch64" ]; then
     return 0
   else
     return 1

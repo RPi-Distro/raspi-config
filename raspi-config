@@ -328,7 +328,7 @@ do_blanking() {
       CURRENT=1
   fi
   if [ "$INTERACTIVE" = True ]; then
-    if [ "$(dpkg -l xscreensaver | tail -n 1 | cut -d ' ' -f 1)" = "ii" ]; then
+    if is_installed xscreensaver; then
       whiptail --msgbox "Warning: xscreensaver is installed may override raspi-config settings" 20 60 2
     fi
     whiptail --yesno "Would you like to enable screen blanking?" $DEFAULT 20 60 2
@@ -1551,7 +1551,7 @@ do_gldriver() {
     return 1
   fi
   for package in gldriver-test libgl1-mesa-dri; do
-    if [ "$(dpkg -l "$package" 2> /dev/null | tail -n 1 | cut -d ' ' -f 1)" != "ii" ]; then
+    if ! is_installed "$package"; then
       missing_packages="$package $missing_packages"
     fi
   done

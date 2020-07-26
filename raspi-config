@@ -88,11 +88,11 @@ is_installed() {
 }
 
 install_package() {
-  apt-get install $@
+  pacman -S $@
 }
 
 update_package_database() {
-  apt-get update
+  pacman -Sy
 }
 
 deb_ver () {

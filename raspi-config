@@ -808,17 +808,17 @@ do_vnc() {
     RET=$1
   fi
   if [ $RET -eq 0 ]; then
-    if is_installed realvnc-vnc-server || install_package realvnc-vnc-server; then
-      systemctl enable vncserver-x11-serviced.service &&
-      systemctl start vncserver-x11-serviced.service &&
+    if is_installed tigervnc || install_package tigervnc; then
+      systemctl enable vncserver.service &&
+      systemctl start vncserver.service &&
       STATUS=enabled
     else
       return 1
     fi
   elif [ $RET -eq 1 ]; then
-    if is_installed realvnc-vnc-server; then
-        systemctl disable vncserver-x11-serviced.service
-        systemctl stop vncserver-x11-serviced.service
+    if is_installed tigervnc; then
+        systemctl disable vncserver.service
+        systemctl stop vncserver.service
     fi
     STATUS=disabled
   else

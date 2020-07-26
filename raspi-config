@@ -490,17 +490,11 @@ do_change_locale() {
 }
 
 do_change_timezone() {
-  if [ "$INTERACTIVE" = True ]; then
-    dpkg-reconfigure tzdata
-  else
-    local TIMEZONE="$1"
-    if [ ! -f "/usr/share/zoneinfo/$TIMEZONE" ]; then
-      return 1;
-    fi
-    rm /etc/localtime
-    echo "$TIMEZONE" > /etc/timezone
-    dpkg-reconfigure -f noninteractive tzdata
+  local TIMEZONE="$1"
+  if [ ! -f "/usr/share/zoneinfo/$TIMEZONE" ]; then
+    return 1;
   fi
+  ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime
 }
 
 get_wifi_country() {

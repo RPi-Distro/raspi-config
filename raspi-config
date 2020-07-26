@@ -402,16 +402,16 @@ do_pixdub() {
   fi
   if is_pi && ! is_fkms; then
     if [ $RET -eq 0 ] ; then
-	  XVAL=$(xrandr 2>&1 | grep current | cut -f2 -d, | cut -f3 -d' ')
-	  YVAL=$(xrandr 2>&1 | grep current | cut -f2 -d, | cut -f5 -d' ')
-	  if is_number $XVAL || is_number $YVAL ; then
+      XVAL=$(xrandr 2>&1 | grep current | cut -f2 -d, | cut -f3 -d' ')
+      YVAL=$(xrandr 2>&1 | grep current | cut -f2 -d, | cut -f5 -d' ')
+      if is_number $XVAL || is_number $YVAL ; then
         if [ "$INTERACTIVE" = True ]; then
           whiptail --msgbox "Could not read current screen dimensions - unable to enable pixel doubling" 20 60 1
         fi
-	    return 1
-	  fi
-	  NEWX=`expr $XVAL / 2`
-	  NEWY=`expr $YVAL / 2`
+        return 1
+      fi
+      NEWX=`expr $XVAL / 2`
+      NEWY=`expr $YVAL / 2`
       set_config_var framebuffer_width $NEWX $CONFIG
       set_config_var framebuffer_height $NEWY $CONFIG
       set_config_var scaling_kernel 8 $CONFIG

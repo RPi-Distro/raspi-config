@@ -499,6 +499,11 @@ do_change_timezone() {
   fi
 }
 
+do_change_xsession() {
+  update-alternatives --config x-session-manager
+  ASK_TO_REBOOT=1
+}
+
 get_wifi_country() {
   CODE=${1:-0}
   IFACE="$(list_wlan_interfaces | head -n 1)"
@@ -2521,12 +2526,14 @@ do_boot_menu() {
       "B3 Splash Screen" "Choose graphical splash screen or text boot" \
       "B4 Boot Order" "Choose network or USB device boot" \
       "B5 Boot ROM Version" "Select latest or default boot ROM software" \
+      "B6 X session" "Choose X session / desktop environment" \
       3>&1 1>&2 2>&3)
   else
     FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Boot Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
       "B1 Desktop / CLI" "Choose whether to boot into a desktop environment or the command line" \
       "B2 Wait for Network at Boot" "Choose whether to wait for network connection during boot" \
       "B3 Splash Screen" "Choose graphical splash screen or text boot" \
+      "B6 X session" "Choose X session / desktop environment" \
       3>&1 1>&2 2>&3)
   fi
   RET=$?
@@ -2539,6 +2546,7 @@ do_boot_menu() {
       B3\ *) do_boot_splash ;;
       B4\ *) do_boot_order ;;
       B5\ *) do_boot_rom ;;
+      B6\ *) do_change_xsession ;;
       *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
   fi

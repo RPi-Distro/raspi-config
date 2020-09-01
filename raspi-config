@@ -616,7 +616,14 @@ do_memory_split() { # Memory Split
     if [ -z "$CUR_GPU_MEM" ] || [ $CUR_GPU_MEM = "0" ]; then
       CUR_GPU_MEM=$(get_config_var gpu_mem $CONFIG)
     fi
-    [ -z "$CUR_GPU_MEM" ] || [ $CUR_GPU_MEM = "0" ] && CUR_GPU_MEM=64
+    # Handle case where no gpu_mem specified in config.txt
+    if [ -z "$CUR_GPU_MEM" ] || [ $CUR_GPU_MEM = "0" ]; then
+      if [ $tot -lt 1024 ]; then
+        CUR_GPU_MEM=64
+      else
+        CUR_GPU_MEM=76
+      fi
+    fi
     ## ask users what gpu_mem they want
     if [ "$INTERACTIVE" = True ]; then
       NEW_GPU_MEM=$(whiptail --inputbox "How much memory (MB) should the GPU have?  e.g. 16/32/64/128/256" \

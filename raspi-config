@@ -618,7 +618,7 @@ do_memory_split() { # Memory Split
     fi
     # Handle case where no gpu_mem specified in config.txt
     if [ -z "$CUR_GPU_MEM" ] || [ $CUR_GPU_MEM = "0" ]; then
-      if [ $tot -lt 1024 ]; then
+      if [ $tot -le 1008 ]; then
         CUR_GPU_MEM=64
       else
         CUR_GPU_MEM=76

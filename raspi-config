@@ -2181,6 +2181,13 @@ local_mount_root()
 	mount -t overlay \
 	    -olowerdir=/lower,upperdir=/upper/data,workdir=/upper/work \
 	    overlay ${rootmnt}
+
+	# if /persistent exists, let it survive reboots
+	# NOTE: user must opt-in by creating /persistent BEFORE enabling overlay
+	if [ -e /lower/persistent ]; then
+		mount --bind /lower/persistent ${rootmnt}/persistent
+		mount -o remount,rw ${rootmnt}/persistent
+	fi
 }
 EOF
 

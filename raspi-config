@@ -1746,17 +1746,22 @@ do_gldriver() {
     whiptail --msgbox "Required packages not found, please install: ${missing_packages}" 20 60 2
     return 1
   fi
-  if is_pifour ; then
-  GLOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "GL Driver" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
-    "G1 Legacy" "Original non-GL desktop driver" \
-    "G2 GL (Fake KMS)" "OpenGL desktop driver with fake KMS" \
-    3>&1 1>&2 2>&3)
+  if [ "$INTERACTIVE" = True ]; then
+    if is_pifour ; then
+    GLOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "GL Driver" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+      "G1 Legacy" "Original non-GL desktop driver" \
+      "G2 GL (Fake KMS)" "OpenGL desktop driver with fake KMS" \
+      3>&1 1>&2 2>&3)
+    else
+    GLOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "GL Driver" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+      "G1 Legacy" "Original non-GL desktop driver" \
+      "G2 GL (Fake KMS)" "OpenGL desktop driver with fake KMS" \
+      "G3 GL (Full KMS)" "OpenGL desktop driver with full KMS" \
+      3>&1 1>&2 2>&3)
+    fi
   else
-  GLOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "GL Driver" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
-    "G1 Legacy" "Original non-GL desktop driver" \
-    "G2 GL (Fake KMS)" "OpenGL desktop driver with fake KMS" \
-    "G3 GL (Full KMS)" "OpenGL desktop driver with full KMS" \
-    3>&1 1>&2 2>&3)
+    GLOPT=$1
+    true
   fi
   if [ $? -eq 0 ]; then
     case "$GLOPT" in

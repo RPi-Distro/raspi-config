@@ -133,6 +133,7 @@ configuration of the Raspberry Pi. Although it can be run
 at any time, some of the options may have difficulties if
 you have heavily customised your installation.\
 " 20 70 1
+  return 0
 }
 
 get_can_expand() {

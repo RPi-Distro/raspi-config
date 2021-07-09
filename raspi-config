@@ -26,43 +26,43 @@ else
 fi
 
 is_pione() {
-   if grep -q "^Revision\s*:\s*00[0-9a-fA-F][0-9a-fA-F]$" /proc/cpuinfo; then
-      return 0
-   elif grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]0[0-36][0-9a-fA-F]$" /proc/cpuinfo ; then
-      return 0
-   else
-      return 1
-   fi
+  if grep -q "^Revision\s*:\s*00[0-9a-fA-F][0-9a-fA-F]$" /proc/cpuinfo; then
+    return 0
+  elif grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]0[0-36][0-9a-fA-F]$" /proc/cpuinfo ; then
+    return 0
+  else
+    return 1
+  fi
 }
 
 is_pitwo() {
-   grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]04[0-9a-fA-F]$" /proc/cpuinfo
-   return $?
+  grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]04[0-9a-fA-F]$" /proc/cpuinfo
+  return $?
 }
 
 is_pizero() {
-   grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]0[9cC][0-9a-fA-F]$" /proc/cpuinfo
-   return $?
+  grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]0[9cC][0-9a-fA-F]$" /proc/cpuinfo
+  return $?
 }
 
 is_pifour() {
-   grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F]3[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]$" /proc/cpuinfo
-   return $?
+  grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F]3[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]$" /proc/cpuinfo
+  return $?
 }
 
 get_pi_type() {
-   if is_pione; then
-      echo 1
-   elif is_pitwo; then
-      echo 2
-   else
-      echo 0
-   fi
+  if is_pione; then
+    echo 1
+  elif is_pitwo; then
+    echo 2
+  else
+    echo 0
+  fi
 }
 
 is_live() {
-    grep -q "boot=live" $CMDLINE
-    return $?
+  grep -q "boot=live" $CMDLINE
+  return $?
 }
 
 is_ssh() {
@@ -98,11 +98,11 @@ has_analog() {
 }
 
 is_installed() {
-    if [ "$(dpkg -l "$1" 2> /dev/null | tail -n 1 | cut -d ' ' -f 1)" != "ii" ]; then
-      return 1
-    else
-      return 0
-    fi
+  if [ "$(dpkg -l "$1" 2> /dev/null | tail -n 1 | cut -d ' ' -f 1)" != "ii" ]; then
+    return 1
+  else
+    return 0
+  fi
 }
 
 deb_ver () {
@@ -301,8 +301,8 @@ do_overscan() {
   DEFAULT=--defaultno
   CURRENT=0
   if [ $(get_overscan) -eq 0 ]; then
-      DEFAULT=
-      CURRENT=1
+    DEFAULT=
+    CURRENT=1
   fi
   if [ "$INTERACTIVE" = True ]; then
     whiptail --yesno "Would you like to enable compensation for displays with overscan?" $DEFAULT 20 60 2
@@ -341,8 +341,8 @@ do_blanking() {
   DEFAULT=--defaultno
   CURRENT=0
   if [ "$(get_blanking)" -eq 0 ]; then
-      DEFAULT=
-      CURRENT=1
+    DEFAULT=
+    CURRENT=1
   fi
   if [ "$INTERACTIVE" = True ]; then
     if [ "$(dpkg -l xscreensaver | tail -n 1 | cut -d ' ' -f 1)" = "ii" ]; then
@@ -401,8 +401,8 @@ do_pixdub() {
   DEFAULT=--defaultno
   CURRENT=0
   if [ $(get_pixdub) -eq 0 ]; then
-      DEFAULT=
-      CURRENT=1
+    DEFAULT=
+    CURRENT=1
   fi
   if [ "$INTERACTIVE" = True ]; then
     whiptail --yesno "Would you like to enable pixel doubling?" $DEFAULT 20 60 2
@@ -412,16 +412,16 @@ do_pixdub() {
   fi
   if is_pi && ! is_fkms; then
     if [ $RET -eq 0 ] ; then
-	  XVAL=$(xrandr 2>&1 | grep current | cut -f2 -d, | cut -f3 -d' ')
-	  YVAL=$(xrandr 2>&1 | grep current | cut -f2 -d, | cut -f5 -d' ')
-	  if is_number $XVAL || is_number $YVAL ; then
+      XVAL=$(xrandr 2>&1 | grep current | cut -f2 -d, | cut -f3 -d' ')
+      YVAL=$(xrandr 2>&1 | grep current | cut -f2 -d, | cut -f5 -d' ')
+      if is_number $XVAL || is_number $YVAL ; then
         if [ "$INTERACTIVE" = True ]; then
           whiptail --msgbox "Could not read current screen dimensions - unable to enable pixel doubling" 20 60 1
         fi
-	    return 1
-	  fi
-	  NEWX=`expr $XVAL / 2`
-	  NEWY=`expr $YVAL / 2`
+        return 1
+      fi
+      NEWX=`expr $XVAL / 2`
+      NEWY=`expr $YVAL / 2`
       set_config_var framebuffer_width $NEWX $CONFIG
       set_config_var framebuffer_height $NEWY $CONFIG
       set_config_var scaling_kernel 8 $CONFIG
@@ -575,7 +575,7 @@ do_wifi_country() {
     wpa_cli -i "$IFACE" set country "$COUNTRY"
     wpa_cli -i "$IFACE" save_config > /dev/null 2>&1
     if iw reg set "$COUNTRY" 2> /dev/null; then
-        ASK_TO_REBOOT=1
+      ASK_TO_REBOOT=1
     fi
     if hash rfkill 2> /dev/null; then
       rfkill unblock wifi
@@ -586,14 +586,14 @@ do_wifi_country() {
       fi
     fi
     if [ "$INTERACTIVE" = True ]; then
-        whiptail --msgbox "Wireless LAN country set to $COUNTRY" 20 60 1
+      whiptail --msgbox "Wireless LAN country set to $COUNTRY" 20 60 1
     fi
   fi
   IFS=$oIFS
 }
 
 get_hostname() {
-    cat /etc/hostname | tr -d " \t\n\r"
+  cat /etc/hostname | tr -d " \t\n\r"
 }
 
 do_hostname() {
@@ -703,7 +703,7 @@ system instability, try a more modest overclock. Hold down
 shift during boot to temporarily disable overclock.
 See https://www.raspberrypi.org/documentation/configuration/config-txt/overclocking.md for more information.\
 " 20 70 1
-   if is_pione; then
+  if is_pione; then
     OVERCLOCK=$(whiptail --menu "Choose overclock preset" 20 60 10 \
       "None" "700MHz ARM, 250MHz core, 400MHz SDRAM, 0 overvolt" \
       "Modest" "800MHz ARM, 250MHz core, 400MHz SDRAM, 0 overvolt" \
@@ -711,12 +711,12 @@ See https://www.raspberrypi.org/documentation/configuration/config-txt/overclock
       "High" "950MHz ARM, 250MHz core, 450MHz SDRAM, 6 overvolt" \
       "Turbo" "1000MHz ARM, 500MHz core, 600MHz SDRAM, 6 overvolt" \
       3>&1 1>&2 2>&3)
-   elif is_pitwo; then
+  elif is_pitwo; then
     OVERCLOCK=$(whiptail --menu "Choose overclock preset" 20 60 10 \
       "None" "900MHz ARM, 250MHz core, 450MHz SDRAM, 0 overvolt" \
       "High" "1000MHz ARM, 500MHz core, 500MHz SDRAM, 2 overvolt" \
       3>&1 1>&2 2>&3)
-   fi
+  fi
   else
     OVERCLOCK=$1
     true
@@ -842,8 +842,8 @@ do_vnc() {
     fi
   elif [ $RET -eq 1 ]; then
     if is_installed realvnc-vnc-server; then
-        systemctl disable vncserver-x11-serviced.service
-        systemctl stop vncserver-x11-serviced.service
+      systemctl disable vncserver-x11-serviced.service
+      systemctl stop vncserver-x11-serviced.service
     fi
     STATUS=disabled
   else
@@ -967,12 +967,12 @@ do_serial() {
   CURRENTS=0
   CURRENTH=0
   if [ $(get_serial) -eq 0 ]; then
-      DEFAULTS=
-      CURRENTS=1
+    DEFAULTS=
+    CURRENTS=1
   fi
   if [ $(get_serial_hw) -eq 0 ]; then
-      DEFAULTH=
-      CURRENTH=1
+    DEFAULTH=
+    CURRENTH=1
   fi
   if [ "$INTERACTIVE" = True ]; then
     whiptail --yesno "Would you like a login shell to be accessible over serial?" $DEFAULTS 20 60 2
@@ -1009,7 +1009,7 @@ do_serial() {
       RET=$((2-$RET))
     fi
     if [ $RET -eq $CURRENTH ]; then
-     ASK_TO_REBOOT=1
+      ASK_TO_REBOOT=1
     fi
     if [ $RET -eq 0 ]; then
       set_config_var enable_uart 1 $CONFIG
@@ -1024,7 +1024,7 @@ do_serial() {
     return $RET
   fi
   if [ "$INTERACTIVE" = True ]; then
-      whiptail --msgbox "The serial login shell is $SSTATUS\nThe serial interface is $HSTATUS" 20 60 1
+    whiptail --msgbox "The serial login shell is $SSTATUS\nThe serial interface is $HSTATUS" 20 60 1
   fi
 }
 
@@ -1104,7 +1104,7 @@ do_pi4video() {
         sed $CONFIG -i -e "s/^#\?hdmi_enable_4kp60=.*/hdmi_enable_4kp60=1/"
         sed $CONFIG -i -e "s/^enable_tvout=/#enable_tvout=/"
         if ! grep -q "hdmi_enable_4kp60" $CONFIG ; then
-            sed $CONFIG -i -e "\$ahdmi_enable_4kp60=1"
+          sed $CONFIG -i -e "\$ahdmi_enable_4kp60=1"
         fi
         sed $CONFIG -i -e "s/^dtoverlay=vc4-kms-v3d.*/dtoverlay=vc4-kms-v3d/"
         STATUS="4Kp60 is enabled on HDMI0"
@@ -1115,7 +1115,7 @@ do_pi4video() {
           sed $CONFIG -i -e "s/^#\?enable_tvout=.*/enable_tvout=1/"
           sed $CONFIG -i -e "s/^hdmi_enable_4kp60=/#hdmi_enable_4kp60=/"
           if ! grep -q "enable_tvout" $CONFIG ; then
-              sed $CONFIG -i -e "\$aenable_tvout=1"
+            sed $CONFIG -i -e "\$aenable_tvout=1"
           fi
           sed $CONFIG -i -e "s/^dtoverlay=vc4-kms-v3d.*/dtoverlay=vc4-kms-v3d,composite/"
           STATUS="Composite video is enabled. HDMI is disabled."
@@ -1507,7 +1507,7 @@ do_boot_rom() {
     if [ "$INTERACTIVE" = True ]; then
       whiptail --yesno "$EETYPE boot ROM selected - will be loaded at next reboot.\n\nReset boot ROM to defaults?" 20 60 2
       DEFAULTS=$?
-     else
+    else
       DEFAULTS=$2
     fi
     if [ "$DEFAULTS" -eq 0 ]; then # yes
@@ -1720,8 +1720,8 @@ do_camera() {
   DEFAULT=--defaultno
   CURRENT=0
   if [ $(get_camera) -eq 0 ]; then
-      DEFAULT=
-      CURRENT=1
+    DEFAULT=
+    CURRENT=1
   fi
   if [ "$INTERACTIVE" = True ]; then
     whiptail --yesno "Would you like the camera interface to be enabled?" $DEFAULT 20 60 2
@@ -2029,7 +2029,7 @@ do_net_names () {
   if [ "$INTERACTIVE" = True ]; then
     whiptail --msgbox "Predictable network interface names are $STATUS" 20 60 1
   fi
- }
+}
 
 do_update() {
   apt-get update &&
@@ -2435,7 +2435,7 @@ get_overlay_conf() {
 }
 
 get_bootro_now() {
- findmnt /boot | grep -q " ro,"
+  findmnt /boot | grep -q " ro,"
 }
 
 get_bootro_conf() {
@@ -2536,12 +2536,12 @@ EOF
 
   # modify command line
   if ! grep -q "boot=overlay" /boot/cmdline.txt ; then
-      sed -i /boot/cmdline.txt -e "s/^/boot=overlay /"
+    sed -i /boot/cmdline.txt -e "s/^/boot=overlay /"
   fi
 
   if [ "$BOOTRO" = "yes" ] ; then
     if ! mount -o remount,ro /boot 2>/dev/null ; then
-        echo "Unable to remount boot partition as read-only"
+      echo "Unable to remount boot partition as read-only"
     fi
   fi
 }
@@ -2568,7 +2568,7 @@ disable_overlayfs() {
 
   if [ "$BOOTRO" = "yes" ] ; then
     if ! mount -o remount,ro /boot 2>/dev/null ; then
-        echo "Unable to remount boot partition as read-only"
+      echo "Unable to remount boot partition as read-only"
     fi
   fi
 }

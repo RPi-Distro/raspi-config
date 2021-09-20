@@ -492,7 +492,7 @@ do_change_locale() {
     dpkg-reconfigure locales
   else
     local LOCALE="$1"
-    if ! LOCALE_LINE="$(grep "^$LOCALE " /usr/share/i18n/SUPPORTED)"; then
+    if ! LOCALE_LINE="$(grep "^$LOCALE" /usr/share/i18n/SUPPORTED)"; then
       return 1
     fi
     local ENCODING="$(echo $LOCALE_LINE | cut -f2 -d " ")"

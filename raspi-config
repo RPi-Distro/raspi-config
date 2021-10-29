@@ -2465,7 +2465,11 @@ do_overlayfs() {
     else
       BPRO="writable"
     fi
-    whiptail --msgbox "The boot partition is currently $BPRO. This cannot be changed while an overlay file system is enabled." 20 60 1
+    if [ "$INTERACTIVE" = True ]; then
+      whiptail --msgbox "The boot partition is currently $BPRO. This cannot be changed while an overlay file system is enabled." 20 60 1
+    else
+      echo "The boot partition is currently $BPRO. This cannot be changed while an overlay file system is enabled."
+    fi
   else
     DEFAULT=--defaultno
     CURRENT=0

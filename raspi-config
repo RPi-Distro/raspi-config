@@ -2854,23 +2854,27 @@ do_system_menu() {
 
 do_display_menu() {
   if is_pi ; then
-    if is_fkms; then
-    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-      "D2 Underscan" "Remove black border around screen" \
-      "D3 Pixel Doubling" "Enable/disable 2x2 pixel mapping" \
-      "D4 Screen Blanking" "Enable/disable screen blanking" \
-      "D5 VNC Resolution" "Set resolution for headless use" \
-      "D6 Composite" "Set options for composite output" \
-      3>&1 1>&2 2>&3)
+    set -- "D1 Resolution" "Set a specific screen resolution" "D2 Underscan" "Remove black border around screen" "D3 Pixel Doubling" "Enable/disable 2x2 pixel mapping" "D4 Screen Blanking" "Enable/disable screen blanking" "D5 VNC Resolution" "Set resolution for headless use" "D6 Composite" "Set options for composite output";
+    if is_pifour; then
+      if is_fkms; then
+      FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+        "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "D6 Composite/4Kp60" "Composite and 4kp60 options" \
+        3>&1 1>&2 2>&3)
+      else
+      FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+        "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "D6 Composite/4Kp60" "Composite and 4Kp60 options" \
+        3>&1 1>&2 2>&3)
+      fi
     else
-    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-      "D1 Resolution" "Set a specific screen resolution" \
-      "D2 Underscan" "Remove black border around screen" \
-      "D3 Pixel Doubling" "Enable/disable 2x2 pixel mapping" \
-      "D4 Screen Blanking" "Enable/disable screen blanking" \
-      "D5 VNC Resolution" "Set resolution for headless use" \
-      "D6 Composite" "Set options for composite output" \
-      3>&1 1>&2 2>&3)
+      if is_fkms; then
+      FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+        "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}" "${12}" \
+        3>&1 1>&2 2>&3)
+      else
+      FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+        "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}" "${12}" \
+        3>&1 1>&2 2>&3)
+      fi
     fi
   else
     FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \

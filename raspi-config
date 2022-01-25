@@ -2854,24 +2854,32 @@ do_system_menu() {
 
 do_display_menu() {
   if is_pi ; then
+    # Build menu layout using positional array
+    # Two versions of D6 are specified seperately:
+    # d6 is for Pi 0 - 3
+    # pi4d6 for Pi 4
+    set -- "D1 Resolution" "Set a specific screen resolution" \
+      "D2 Underscan" "Remove black border around screen" \
+      "D3 Pixel Doubling" "Enable/disable 2x2 pixel mapping" \
+      "D4 Screen Blanking" "Enable/disable screen blanking" \
+      "D5 VNC Resolution" "Set resolution for headless use";
+    d6="D6 Composite";
+    d6desc="Set options for composite output";
+    pi4d6="D6 Composite/4Kp60";
+    pi4d6desc="Composite and 4Kp60 output options";
     if is_fkms; then
-    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-      "D2 Underscan" "Remove black border around screen" \
-      "D3 Pixel Doubling" "Enable/disable 2x2 pixel mapping" \
-      "D4 Screen Blanking" "Enable/disable screen blanking" \
-      "D5 VNC Resolution" "Set resolution for headless use" \
-      "D6 Composite" "Set options for composite output" \
-      3>&1 1>&2 2>&3)
-    else
-    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-      "D1 Resolution" "Set a specific screen resolution" \
-      "D2 Underscan" "Remove black border around screen" \
-      "D3 Pixel Doubling" "Enable/disable 2x2 pixel mapping" \
-      "D4 Screen Blanking" "Enable/disable screen blanking" \
-      "D5 VNC Resolution" "Set resolution for headless use" \
-      "D6 Composite" "Set options for composite output" \
-      3>&1 1>&2 2>&3)
+      # KMS or FKMS is in use, so hide D1 Resolution menu item
+      shift;
+      shift;
     fi
+    if is_pifour; then
+      set -- "$@" "$pi4d6" "$pi4d6desc";
+    else
+      set -- "$@" "$d6" "$d6desc";
+    fi
+    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+      "$@" \
+      3>&1 1>&2 2>&3)
   else
     FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
       "D3 Pixel Doubling" "Enable/disable 2x2 pixel mapping" \

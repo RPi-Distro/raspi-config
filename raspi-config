@@ -1588,7 +1588,7 @@ do_boot_rom() {
     else
       rpi-eeprom-update
       if [ "$INTERACTIVE" = True ]; then
-        whiptail --msgbox "Boot EEPROM config left unchanged" 20 60 2
+        whiptail --msgbox "Bootloader EEPROM config left unchanged" 20 60 2
       fi
     fi
     ASK_TO_REBOOT=1

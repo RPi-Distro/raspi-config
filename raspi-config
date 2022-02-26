@@ -1538,9 +1538,9 @@ do_boot_order() {
 
 do_boot_rom() {
   if [ "$INTERACTIVE" = True ]; then
-    BOOTOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Boot ROM Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
-      "E1 Latest" "Use the latest version boot ROM software" \
-      "E2 Default" "Use the factory default boot ROM software" \
+    BOOTOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Bootloader EEPROM Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+      "E1 Latest" "Use latest bootloader EEPROM software" \
+      "E2 Default" "Use default bootloader EEPROM software" \
       3>&1 1>&2 2>&3)
   else
     BOOTOPT=$1
@@ -1557,12 +1557,12 @@ do_boot_rom() {
         EETYPE="Factory default"
         ;;
       *)
-        whiptail --msgbox "Programmer error, unrecognised boot ROM option" 20 60 2
+        whiptail --msgbox "Programmer error, unrecognised bootloader EEPROM option" 20 60 2
         return 1
         ;;
     esac
     if [ "$INTERACTIVE" = True ]; then
-      whiptail --yesno "$EETYPE boot ROM selected - will be loaded at next reboot.\n\nReset boot ROM to defaults?" 20 60 2
+      whiptail --yesno "$EETYPE bootloader EEPROM selected - will be installed at next reboot.\n\nReset bootloader EEPROM config to defaults?" 20 60 2
       DEFAULTS=$?
     else
       DEFAULTS=$2
@@ -1582,13 +1582,13 @@ do_boot_rom() {
       else
         rpi-eeprom-update -d -f $FILNAME
         if [ "$INTERACTIVE" = True ]; then
-          whiptail --msgbox "Boot ROM reset to defaults" 20 60 2
+          whiptail --msgbox "Bootloader EEPROM config reset to defaults" 20 60 2
         fi
       fi
     else
       rpi-eeprom-update
       if [ "$INTERACTIVE" = True ]; then
-        whiptail --msgbox "Boot ROM not reset to defaults" 20 60 2
+        whiptail --msgbox "Boot EEPROM config left unchanged" 20 60 2
       fi
     fi
     ASK_TO_REBOOT=1
@@ -3043,7 +3043,7 @@ do_advanced_menu() {
       "A4 Network Interface Names" "Enable/disable predictable network i/f names" \
       "A5 Network Proxy Settings" "Configure network proxy settings" \
       "A6 Boot Order" "Choose network or USB device boot" \
-      "A7 Bootloader Version" "Select latest or default boot ROM software" \
+      "A7 Bootloader Version" "Select bootloader EEPROM software" \
       3>&1 1>&2 2>&3)
   elif is_pi ; then
     FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Advanced Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \

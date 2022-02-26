@@ -328,6 +328,61 @@ do_overscan() {
   fi
 }
 
+get_overscan_kms() {
+  RES=$(grep "HDMI-$1" /usr/share/dispsetup.sh | grep margin | rev | cut -d ' ' -f 1 | rev)
+  if [ -z $RES ] ; then
+    echo 1
+  elif [ $RES -eq 0 ] ; then
+    echo 1
+  else
+    echo 0
+  fi
+}
+
+do_overscan_kms() {
+  if [ "$INTERACTIVE" = True ]; then
+    NDEVS=$(xrandr -q | grep -c connected)
+    if [ $NDEVS -gt 1 ] ; then
+      DEV=$(whiptail --menu "Select the output for which overscan is to be set" 20 60 10 "1" "HDMI-1" "2" "HDMI-2" 3>&1 1>&2 2>&3)
+      if [ $? -eq 1 ] ; then
+        return
+      fi
+    else
+      DEV=1
+    fi
+    if [ $(get_overscan_kms $DEV) -eq 1 ]; then
+      DEFAULT=--defaultno
+    else
+      DEFAULT=
+    fi
+    if whiptail --yesno "Would you like to enable overscan compensation for HDMI-$DEV?" $DEFAULT 20 60 2 ; then
+      PIX=16
+      STATUS="enabled"
+    else
+      PIX=0
+      STATUS="disabled"
+    fi
+  else
+    DEV=$1
+    if [ $2 -eq 1 ] ; then
+      PIX=0
+    else
+      PIX=16
+    fi
+  fi
+  xrandr --output HDMI-$DEV --set "left margin" $PIX --set "right margin" $PIX --set "top margin" $PIX --set "bottom margin" $PIX
+  sed $CONFIG -i -e "s/^overscan_/#overscan_/"
+  set_config_var disable_overscan 1 $CONFIG
+  if grep "HDMI-$DEV" /usr/share/dispsetup.sh | grep -q margin ; then
+    sed /usr/share/dispsetup.sh -i -e "s/xrandr --output HDMI-$DEV.*margin.*/xrandr --output HDMI-$DEV --set \"left margin\" $PIX --set \"right margin\" $PIX --set \"top margin\" $PIX --set \"bottom margin\" $PIX/"
+  else
+    sed /usr/share/dispsetup.sh -i -e "s/exit/xrandr --output HDMI-$DEV --set \"left margin\" $PIX --set \"right margin\" $PIX --set \"top margin\" $PIX --set \"bottom margin\" $PIX\nexit/"
+  fi
+  if [ "$INTERACTIVE" = True ]; then
+    whiptail --msgbox "Display overscan compensation for HDMI-$DEV is $STATUS" 20 60 1
+  fi
+}
+
 get_blanking() {
   if ! [ -f "/etc/X11/xorg.conf.d/10-blanking.conf" ]; then
     echo 0
@@ -1357,7 +1412,7 @@ do_boot_behaviour() {
       B1*)
         systemctl set-default multi-user.target
         ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
-        rm /etc/systemd/system/getty@tty1.service.d/autologin.conf
+        rm -f /etc/systemd/system/getty@tty1.service.d/autologin.conf
         ;;
       B2*)
         systemctl set-default multi-user.target
@@ -1372,7 +1427,7 @@ EOF
         if [ -e /etc/init.d/lightdm ]; then
           systemctl set-default graphical.target
           ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
-          rm /etc/systemd/system/getty@tty1.service.d/autologin.conf
+          rm -f /etc/systemd/system/getty@tty1.service.d/autologin.conf
           sed /etc/lightdm/lightdm.conf -i -e "s/^autologin-user=.*/#autologin-user=/"
           disable_raspi_config_at_boot
         else
@@ -1943,9 +1998,7 @@ Exec=/usr/lib/raspi-config/cmstart.sh
 EOF
     STATUS=enabled
   elif [ $RET -eq 1 ]; then
-    if [ -e /etc/xdg/autostart/xcompmgr.desktop ]; then
-      rm /etc/xdg/autostart/xcompmgr.desktop
-    fi
+    rm -f /etc/xdg/autostart/xcompmgr.desktop
     STATUS=disabled
   else
     return $RET
@@ -1974,9 +2027,7 @@ do_glamor() {
   if [ $RET -eq 0 ]; then
     systemctl disable glamor-test.service
     systemctl stop glamor-test.service
-    if [ -e /usr/share/X11/xorg.conf.d/20-noglamor.conf ] ; then
-      rm /usr/share/X11/xorg.conf.d/20-noglamor.conf
-    fi
+    rm -f /usr/share/X11/xorg.conf.d/20-noglamor.conf
     STATUS=enabled
   elif [ $RET -eq 1 ]; then
     systemctl enable glamor-test.service &&
@@ -2430,23 +2481,26 @@ do_apply_os_config() {
 
 get_overlay_now() {
   grep -q "boot=overlay" /proc/cmdline
+  echo $?
 }
 
 get_overlay_conf() {
   grep -q "boot=overlay" /boot/cmdline.txt
+  echo $?
 }
 
 get_bootro_now() {
   findmnt /boot | grep -q " ro,"
+  echo $?
 }
 
 get_bootro_conf() {
   grep /boot /etc/fstab | grep -q "defaults.*,ro "
+  echo $?
 }
 
 is_uname_current() {
   test -d "/lib/modules/$(uname -r)"
-  return $?
 }
 
 enable_overlayfs() {
@@ -2454,7 +2508,7 @@ enable_overlayfs() {
   INITRD=initrd.img-"$KERN"-overlay
 
   # mount the boot partition as writable if it isn't already
-  if get_bootro_now ; then
+  if [ $(get_bootro_now) -eq 0 ] ; then
     if ! mount -o remount,rw /boot 2>/dev/null ; then
       echo "Unable to mount boot partition as writable - cannot enable"
       return 1
@@ -2551,7 +2605,7 @@ EOF
 disable_overlayfs() {
   KERN=$(uname -r)
   # mount the boot partition as writable if it isn't already
-  if get_bootro_now ; then
+  if [ $(get_bootro_now) -eq 0 ] ; then
     if ! mount -o remount,rw /boot 2>/dev/null ; then
       echo "Unable to mount boot partition as writable - cannot disable"
       return 1
@@ -2576,7 +2630,7 @@ disable_overlayfs() {
 }
 
 enable_bootro() {
-  if get_overlay_now ; then
+  if [ $(get_overlay_now) -eq 0 ] ; then
     echo "Overlay in use; cannot update fstab"
     return 1
   fi
@@ -2584,7 +2638,7 @@ enable_bootro() {
 }
 
 disable_bootro() {
-  if get_overlay_now ; then
+  if [ $(get_overlay_now) -eq 0 ] ; then
     echo "Overlay in use; cannot update fstab"
     return 1
   fi
@@ -2601,7 +2655,7 @@ do_overlayfs() {
     return 1
   fi
 
-  if get_overlay_conf; then
+  if [ $(get_overlay_conf) -eq 0 ] ; then
     DEFAULT=
     CURRENT=1
     STATUS="enabled"
@@ -2634,8 +2688,8 @@ do_overlayfs() {
   if [ "$INTERACTIVE" = True ]; then
     whiptail --msgbox "The overlay file system is $STATUS." 20 60 1
   fi
-  if get_overlay_now ; then
-    if get_bootro_conf; then
+  if [ $(get_overlay_now) -eq 0 ] ; then
+    if [ $(get_bootro_conf) -eq 0 ] ; then
       BPRO="read-only"
     else
       BPRO="writable"
@@ -2645,7 +2699,7 @@ do_overlayfs() {
     DEFAULT=--defaultno
     CURRENT=0
     STATUS="writable"
-    if get_bootro_conf; then
+    if [ $(get_bootro_conf) -eq 0 ]; then
       DEFAULT=
       CURRENT=1
       STATUS="read-only"
@@ -2892,7 +2946,12 @@ do_display_menu() {
   elif [ $RET -eq 0 ]; then
     case "$FUN" in
       D1\ *) do_resolution ;;
-      D2\ *) do_overscan ;;
+      D2\ *) if is_fkms ; then
+               do_overscan_kms
+             else
+               do_overscan
+             fi
+             ;;
       D3\ *) do_pixdub ;;
       D4\ *) do_blanking ;;
       D5\ *) do_vnc_resolution ;;

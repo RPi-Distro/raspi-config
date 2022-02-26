@@ -161,7 +161,7 @@ main () {
   fi
 
   if [ "$NOOBS" = "1" ]; then
-    if ! parted -m "$ROOT_DEV" u s resizepart "$EXT_PART_NUM" yes "$TARGET_END"; then
+    if ! printf "resizepart %s\nyes\n%ss\n" "$EXT_PART_NUM" "$TARGET_END" | parted "$ROOT_DEV" ---pretend-input-tty; then
       FAIL_REASON="Extended partition resize failed"
       return 1
     fi

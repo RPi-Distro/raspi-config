@@ -1540,7 +1540,7 @@ do_boot_rom() {
   if [ "$INTERACTIVE" = True ]; then
     BOOTOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Bootloader EEPROM Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
       "E1 Latest" "Use latest bootloader EEPROM software" \
-      "E2 Default" "Use default bootloader EEPROM software" \
+      "E2 Default" "Use factory default bootloader EEPROM software" \
       3>&1 1>&2 2>&3)
   else
     BOOTOPT=$1

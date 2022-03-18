@@ -1426,6 +1426,7 @@ EOF
         return 1
         ;;
     esac
+    systemctl daemon-reload
     ASK_TO_REBOOT=1
   fi
 }

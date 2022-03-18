@@ -1,4 +1,3 @@
 raspi-config /usr/bin
-autologin@.service /etc/systemd/system
 usr/
 etc/

@@ -1086,16 +1086,10 @@ get_boot_cli() {
 get_autologin() {
   if [ $(get_boot_cli) -eq 0 ]; then
     # booting to CLI
-    # stretch or buster - is there an autologin conf file?
     if [ -e /etc/systemd/system/getty@tty1.service.d/autologin.conf ] ; then
       echo 0
     else
-      # stretch or earlier - check the getty service symlink for autologin
-      if [ $(deb_ver) -le 9 ] && grep -q autologin /etc/systemd/system/getty.target.wants/getty@tty1.service ; then
-        echo 0
-      else
-        echo 1
-      fi
+      echo 1
     fi
   else
     # booting to desktop - check the autologin for lightdm
@@ -1391,12 +1385,10 @@ do_boot_behaviour() {
     case "$BOOTOPT" in
       B1*)
         systemctl set-default multi-user.target
-        ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
         rm -f /etc/systemd/system/getty@tty1.service.d/autologin.conf
         ;;
       B2*)
         systemctl set-default multi-user.target
-        ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
         cat > /etc/systemd/system/getty@tty1.service.d/autologin.conf << EOF
 [Service]
 ExecStart=
@@ -1406,7 +1398,6 @@ EOF
       B3*)
         if [ -e /etc/init.d/lightdm ]; then
           systemctl set-default graphical.target
-          ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
           rm -f /etc/systemd/system/getty@tty1.service.d/autologin.conf
           sed /etc/lightdm/lightdm.conf -i -e "s/^autologin-user=.*/#autologin-user=/"
           disable_raspi_config_at_boot
@@ -1418,7 +1409,6 @@ EOF
       B4*)
         if [ -e /etc/init.d/lightdm ]; then
           systemctl set-default graphical.target
-          ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
           cat > /etc/systemd/system/getty@tty1.service.d/autologin.conf << EOF
 [Service]
 ExecStart=

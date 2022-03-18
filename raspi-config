@@ -1384,11 +1384,11 @@ do_boot_behaviour() {
   if [ $? -eq 0 ]; then
     case "$BOOTOPT" in
       B1*)
-        systemctl set-default multi-user.target
+        systemctl --quiet set-default multi-user.target
         rm -f /etc/systemd/system/getty@tty1.service.d/autologin.conf
         ;;
       B2*)
-        systemctl set-default multi-user.target
+        systemctl --quiet set-default multi-user.target
         cat > /etc/systemd/system/getty@tty1.service.d/autologin.conf << EOF
 [Service]
 ExecStart=
@@ -1397,7 +1397,7 @@ EOF
         ;;
       B3*)
         if [ -e /etc/init.d/lightdm ]; then
-          systemctl set-default graphical.target
+          systemctl --quiet set-default graphical.target
           rm -f /etc/systemd/system/getty@tty1.service.d/autologin.conf
           sed /etc/lightdm/lightdm.conf -i -e "s/^autologin-user=.*/#autologin-user=/"
           disable_raspi_config_at_boot
@@ -1408,7 +1408,7 @@ EOF
         ;;
       B4*)
         if [ -e /etc/init.d/lightdm ]; then
-          systemctl set-default graphical.target
+          systemctl --quiet set-default graphical.target
           cat > /etc/systemd/system/getty@tty1.service.d/autologin.conf << EOF
 [Service]
 ExecStart=

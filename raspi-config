@@ -637,6 +637,7 @@ get_hostname() {
 }
 
 do_hostname() {
+  set -e
   if [ "$INTERACTIVE" = True ]; then
     whiptail --msgbox "\
 Please note: RFCs mandate that a hostname's labels \

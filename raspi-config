@@ -55,6 +55,10 @@ get_pi_type() {
     echo 1
   elif is_pitwo; then
     echo 2
+  elif is_pizero; then
+    echo 3  
+  elif is_pifour; then
+    echo 4
   else
     echo 0
   fi

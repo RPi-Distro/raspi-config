@@ -1,3 +1,10 @@
+raspi-config (20220629) bullseye; urgency=medium
+
+  [ Jorge Capona ]
+  * Filter wlan interfaces before using wpa_cli
+
+ -- Serge Schneider <serge@raspberrypi.com>  Wed, 29 Jun 2022 15:24:31 +0100
+
 raspi-config (20220506) bullseye; urgency=medium
 
   * Modify Wayland switching to work with AccountSettings

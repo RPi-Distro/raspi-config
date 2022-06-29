@@ -2327,7 +2327,7 @@ list_valid_wlan_interfaces() {
     echo "$IFACE"
   done
 
-  if [ -z "$VALID_IFACE_FOUND" ] && [ ! -z "$ERROR_MESSAGE" ] && [ "$INTERACTIVE" = True ]; then
+  if [ -z "$VALID_IFACE_FOUND" ] && [ -n "$ERROR_MESSAGE" ] && [ "$INTERACTIVE" = True ]; then
     whiptail --msgbox "${ERROR_MESSAGE}" 20 60
   fi
 }

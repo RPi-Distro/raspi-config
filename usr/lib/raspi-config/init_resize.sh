@@ -167,7 +167,7 @@ main () {
     fi
   fi
 
-  if ! parted -m "$ROOT_DEV" u s resizepart "$ROOT_PART_NUM" "$TARGET_END"; then
+  if ! printf "resizepart %s\nyes\n%ss\n" "$ROOT_PART_NUM" "$TARGET_END" | parted "$ROOT_DEV" ---pretend-input-tty; then
     FAIL_REASON="Root partition resize failed"
     return 1
   fi

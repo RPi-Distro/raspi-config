@@ -41,13 +41,13 @@ check_noobs () {
 }
 
 get_variables () {
-  ROOT_PART_DEV=$(findmnt / -o source -n)
+  ROOT_PART_DEV=$(findmnt / -o source -nv)
   ROOT_PART_NAME=$(echo "$ROOT_PART_DEV" | cut -d "/" -f 3)
   ROOT_DEV_NAME=$(echo /sys/block/*/"${ROOT_PART_NAME}" | cut -d "/" -f 4)
   ROOT_DEV="/dev/${ROOT_DEV_NAME}"
   ROOT_PART_NUM=$(cat "/sys/block/${ROOT_DEV_NAME}/${ROOT_PART_NAME}/partition")
 
-  BOOT_PART_DEV=$(findmnt /boot -o source -n)
+  BOOT_PART_DEV=$(findmnt /boot -o source -nv)
   BOOT_PART_NAME=$(echo "$BOOT_PART_DEV" | cut -d "/" -f 3)
   BOOT_DEV_NAME=$(echo /sys/block/*/"${BOOT_PART_NAME}" | cut -d "/" -f 4)
   BOOT_PART_NUM=$(cat "/sys/block/${BOOT_DEV_NAME}/${BOOT_PART_NAME}/partition")

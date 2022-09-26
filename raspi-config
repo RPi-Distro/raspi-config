@@ -1337,7 +1337,7 @@ do_fan() {
       return 1
     fi
     if [ "$INTERACTIVE" = True ]; then
-      TIN=$(whiptail --inputbox "At what temperature in degrees should the fan turn on?" 20 60 "$TNOW" 3>&1 1>&2 2>&3)
+        TIN=$(whiptail --inputbox "At what temperature in degrees Celsius should the fan turn on?" 20 60 "$TNOW" 3>&1 1>&2 2>&3)
     else
       if [ -z $3 ]; then
         TIN=80
@@ -1373,7 +1373,7 @@ do_fan() {
     fi
     ASK_TO_REBOOT=1
     if [ "$INTERACTIVE" = True ]; then
-      whiptail --msgbox "The fan on GPIO $GPIO is enabled and will turn on at $TIN degrees" 20 60 1
+      whiptail --msgbox "The fan on GPIO $GPIO is enabled and will turn on at $TIN degrees Celsius" 20 60 1
     fi
   else
     if grep -q "^dtoverlay=gpio-fan" $CONFIG ; then

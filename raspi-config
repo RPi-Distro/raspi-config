@@ -619,9 +619,11 @@ do_wifi_country() {
     sed -i "s/^REGDOMAIN=.*$/REGDOMAIN=$REGDOMAIN/"  /etc/default/crda
     iw reg set "$REGDOMAIN"
   fi
-  if [ "$INIT" = "systemd" ] && systemctl -q is-active dhcpcd; then
-    wpa_cli set country "$REGDOMAIN" > /dev/null 2>&1
-    wpa_cli save_config > /dev/null 2>&1
+
+  IFACE="$(list_wlan_interfaces | head -n 1)"
+  if [ "$INIT" = "systemd" ] && [ -n "$IFACE" ] && systemctl -q is-active dhcpcd; then
+    wpa_cli -i "$IFACE" set country "$REGDOMAIN" > /dev/null 2>&1
+    wpa_cli -i "$IFACE" save_config > /dev/null 2>&1
   fi
 
   if [ "$INIT" = "systemd" ] && systemctl -q is-active NetworkManager; then

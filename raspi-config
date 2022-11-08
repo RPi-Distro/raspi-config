@@ -9,6 +9,7 @@ BLACKLIST=/etc/modprobe.d/raspi-blacklist.conf
 CONFIG=/boot/config.txt
 
 USER=${SUDO_USER:-$(who -m | awk '{ print $1 }')}
+INIT="$(ps --no-headers -o comm 1)"
 
 is_pi () {
   ARCH=$(dpkg --print-architecture)
@@ -529,15 +530,18 @@ do_change_pass() {
 
 do_configure_keyboard() {
   printf "Reloading keymap. This may take a short while\n"
+  rm -f /etc/console-setup/cached_*
   if [ "$INTERACTIVE" = True ]; then
     dpkg-reconfigure keyboard-configuration
   else
-    local KEYMAP="$1"
+    KEYMAP="$1"
     sed -i /etc/default/keyboard -e "s/^XKBLAYOUT.*/XKBLAYOUT=\"$KEYMAP\"/"
     dpkg-reconfigure -f noninteractive keyboard-configuration
   fi
-  invoke-rc.d keyboard-setup start
-  setsid sh -c 'exec setupcon -k --force <> /dev/tty1 >&0 2>&1'
+  if [ "$INIT" = "systemd" ]; then
+    systemctl restart keyboard-setup
+  fi
+  setsid sh -c 'exec setupcon --save -k --force <> /dev/tty1 >&0 2>&1'
   udevadm trigger --subsystem-match=input --action=change
   return 0
 }
@@ -551,8 +555,8 @@ do_change_locale() {
     fi
     export LC_ALL=C
     export LANG=C
-    local LG="/etc/locale.gen"
-    local NEW_LANG="$(echo $LOCALE_LINE | cut -f1 -d " ")"
+    LG="/etc/locale.gen"
+    NEW_LANG="$(echo $LOCALE_LINE | cut -f1 -d " ")"
     [ -L "$LG" ] && [ "$(readlink $LG)" = "/usr/share/i18n/SUPPORTED" ] && rm -f "$LG"
     echo "$LOCALE_LINE" > /etc/locale.gen
     update-locale --no-checks LANG
@@ -565,72 +569,78 @@ do_change_timezone() {
   if [ "$INTERACTIVE" = True ]; then
     dpkg-reconfigure tzdata
   else
-    local TIMEZONE="$1"
+    TIMEZONE="$1"
     if [ ! -f "/usr/share/zoneinfo/$TIMEZONE" ]; then
       return 1;
     fi
     rm /etc/localtime
     echo "$TIMEZONE" > /etc/timezone
-    dpkg-reconfigure -f noninteractive tzdata
+    dpkg-reconfigure -f noninteractive tzdata 2> /dev/null
   fi
 }
 
 get_wifi_country() {
   CODE=${1:-0}
-  IFACE="$(list_valid_wlan_interfaces | head -n 1)"
-  if [ -z "$IFACE" ]; then
+  if [ -e /etc/default/crda ]; then
+    . /etc/default/crda
+  elif systemctl -q is-active dhcpcd; then
+    REGDOMAIN="$(wpa_cli get country | tail -n 1)"
+  else
+    REGDOMAIN="$(iw reg get | sed -n "0,/country/s/^country \(.\+\):.*$/\1/p")"
+  fi
+  if [ -z "$REGDOMAIN" ] \
+     || ! grep -q "^${REGDOMAIN}[[:space:]]" /usr/share/zoneinfo/iso3166.tab; then
     return 1
   fi
-
-  wpa_cli -i "$IFACE" save_config > /dev/null 2>&1
-  COUNTRY="$(wpa_cli -i "$IFACE" get country)"
-  if [ "$COUNTRY" = "FAIL" ]; then
-    return 1
-  fi
-  if [ $CODE = 0 ]; then
-    echo "$COUNTRY"
+  if [ "$CODE" = 0 ]; then
+    echo "$REGDOMAIN"
   fi
   return 0
 }
 
 do_wifi_country() {
-  IFACE="$(list_valid_wlan_interfaces | head -n 1)"
-  if [ -z "$IFACE" ]; then
+  if [ "$INTERACTIVE" = True ]; then
+    value=$(sed '/^#/d' /usr/share/zoneinfo/iso3166.tab | tr '\t\n' '/')
+    oIFS="$IFS"
+    IFS="/"
+    #shellcheck disable=2086
+    REGDOMAIN=$(whiptail --menu "Select the country in which the Pi is to be used" 20 60 10 ${value} 3>&1 1>&2 2>&3)
+    IFS="$oIFS"
+  else
+    REGDOMAIN=$1
+  fi
+  if ! grep -q "^${REGDOMAIN}[[:space:]]" /usr/share/zoneinfo/iso3166.tab; then
+    if [ "$INTERACTIVE" = True ]; then
+      whiptail --msgbox "$REGDOMAIN is not a valid ISO/IEC 3166-1 alpha2 code" 20 60
+    fi
     return 1
   fi
+  if [ -e /etc/default/crda ]; then
+    sed -i "s/^REGDOMAIN=.*$/REGDOMAIN=$REGDOMAIN/"  /etc/default/crda
+    iw reg set "$REGDOMAIN"
+  fi
+  if [ "$INIT" = "systemd" ] && systemctl -q is-active dhcpcd; then
+    wpa_cli set country "$REGDOMAIN" > /dev/null 2>&1
+    wpa_cli save_config > /dev/null 2>&1
+  fi
 
-  oIFS="$IFS"
+  if [ "$INIT" = "systemd" ] && systemctl -q is-active NetworkManager; then
+    nmcli radio wifi on
+  elif hash rfkill 2> /dev/null; then
+    rfkill unblock wifi
+  fi
+  if is_pi; then
+    for filename in /var/lib/systemd/rfkill/*:wlan ; do
+      echo 0 > "$filename"
+    done
+  fi
   if [ "$INTERACTIVE" = True ]; then
-    value=$(cat /usr/share/zoneinfo/iso3166.tab | tail -n +26 | tr '\t' '/' | tr '\n' '/')
-    IFS="/"
-    COUNTRY=$(whiptail --menu "Select the country in which the Pi is to be used" 20 60 10 ${value} 3>&1 1>&2 2>&3)
-  else
-    COUNTRY=$1
-    true
+    whiptail --msgbox "Wireless LAN country set to $REGDOMAIN" 20 60 1
   fi
-  if [ $? -eq 0 ];then
-    wpa_cli -i "$IFACE" set country "$COUNTRY"
-    wpa_cli -i "$IFACE" save_config > /dev/null 2>&1
-    if iw reg set "$COUNTRY" 2> /dev/null; then
-      ASK_TO_REBOOT=1
-    fi
-    if hash rfkill 2> /dev/null; then
-      rfkill unblock wifi
-      if is_pi ; then
-        for filename in /var/lib/systemd/rfkill/*:wlan ; do
-          echo 0 > $filename
-        done
-      fi
-    fi
-    if [ "$INTERACTIVE" = True ]; then
-      whiptail --msgbox "Wireless LAN country set to $COUNTRY" 20 60 1
-    fi
-  fi
-  IFS=$oIFS
 }
 
 get_hostname() {
-  cat /etc/hostname | tr -d " \t\n\r"
+  tr -d " \t\n\r" < /etc/hostname
 }
 
 do_hostname() {
@@ -643,16 +653,20 @@ Hostname labels cannot begin or end with a hyphen.
 No other symbols, punctuation characters, or blank spaces are permitted.\
 " 20 70 1
   fi
-  CURRENT_HOSTNAME=`cat /etc/hostname | tr -d " \t\n\r"`
+  CURRENT_HOSTNAME=$(get_hostname)
   if [ "$INTERACTIVE" = True ]; then
     NEW_HOSTNAME=$(whiptail --inputbox "Please enter a hostname" 20 60 "$CURRENT_HOSTNAME" 3>&1 1>&2 2>&3)
   else
-    NEW_HOSTNAME=$1
+    NEW_HOSTNAME="$1"
     true
   fi
-  if [ $? -eq 0 ]; then
-    echo $NEW_HOSTNAME > /etc/hostname
-    sed -i "s/127.0.1.1.*$CURRENT_HOSTNAME/127.0.1.1\t$NEW_HOSTNAME/g" /etc/hosts
+  if [ "$?" -eq 0 ]; then
+    if [ "$INIT" = "systemd" ] && systemctl -q is-active dbus && ! ischroot; then
+      hostnamectl set-hostname "$NEW_HOSTNAME" 2> /dev/null
+    else
+      echo "$NEW_HOSTNAME" > /etc/hostname
+    fi
+    sed -i "s/127\.0\.1\.1.*$CURRENT_HOSTNAME/127.0.1.1\t$NEW_HOSTNAME/g" /etc/hosts
     ASK_TO_REBOOT=1
   fi
 }
@@ -1078,7 +1092,8 @@ disable_raspi_config_at_boot() {
 }
 
 get_boot_cli() {
-  if [ "$(systemctl get-default)" = graphical.target ] && systemctl is-enabled lightdm > /dev/null 2>&1; then
+  if [ "$(basename $(readlink -f /etc/systemd/system/default.target))" = graphical.target ] \
+     && systemctl is-enabled lightdm > /dev/null 2>&1; then
     echo 1
   else
     echo 0
@@ -1428,7 +1443,9 @@ EOF
         return 1
         ;;
     esac
-    systemctl daemon-reload
+    if [ "$INIT" = "systemd" ]; then
+      systemctl daemon-reload
+    fi
     ASK_TO_REBOOT=1
   fi
 }
@@ -2052,6 +2069,55 @@ do_wayland() {
   fi
 }
 
+do_netconf() {
+  systemctl -q is-enabled NetworkManager > /dev/null 2>&1
+  NMENABLED=$?
+  systemctl -q is-enabled dhcpcd > /dev/null 2>&1
+  DHENABLED=$?
+  if [ "$INTERACTIVE" = True ]; then
+    DEFAULT=1
+    if [ "$NMENABLED" = 0 ] ; then
+      DEFAULT=2
+    fi
+    if is_installed dhcpcd5 ; then
+      OPTIONS="1 dhcpcd"
+    fi
+    if is_installed network-manager ; then
+      OPTIONS="$OPTIONS 2 NetworkManager"
+    fi
+    #shellcheck disable=2086
+    NMOPT=$(whiptail --menu "Select the network configuration to use" 20 60 10 $OPTIONS --default-item "$DEFAULT" 3>&1 1>&2 2>&3)
+    RET="$?"
+  else
+    NMOPT="$1"
+    RET=0
+  fi
+  if [ "$RET" -ne 0 ] ; then
+    return
+  fi
+
+  if [ "$NMOPT" -eq 2 ] ; then # NetworkManager selected
+    ENABLE_SERVICE=NetworkManager
+    DISABLE_SERVICE=dhcpcd
+    NETCON="NetworkManager"
+  else # dhcpcd selected
+    ENABLE_SERVICE=dhcpcd
+    DISABLE_SERVICE=NetworkManager
+    NETCON="dhcpcd"
+  fi
+
+  systemctl -q disable "$DISABLE_SERVICE" 2> /dev/null
+  systemctl -q enable "$ENABLE_SERVICE"
+  if [ "$INIT" = "systemd" ]; then
+    systemctl -q stop "$DISABLE_SERVICE" 2> /dev/null
+    systemctl -q --no-block start "$ENABLE_SERVICE"
+  fi
+  ASK_TO_REBOOT=1
+  if [ "$INTERACTIVE" = True ]; then
+    whiptail --msgbox "$NETCON is active" 20 60 1
+  fi
+}
+
 get_net_names() {
   if grep -q "net.ifnames=0" $CMDLINE || \
     ( [ "$(readlink -f /etc/systemd/network/99-default.link)" = "/dev/null" ] && \
@@ -2122,7 +2188,7 @@ do_audio() {
     if [ $? -eq 0 ]; then
       sudo -u $SUDO_USER XDG_RUNTIME_DIR=/run/user/$SUDO_UID pactl set-default-sink $AUDIO_OUT
     fi
-    IFS=$oIFS
+    IFS="$oIFS"
   else
     if aplay -l | grep -q "bcm2835 ALSA"; then
       if [ "$INTERACTIVE" = True ]; then
@@ -2140,27 +2206,30 @@ do_audio() {
     else
       ASPATH=$(getent passwd $USER | cut -d : -f 6)/.asoundrc
       if [ "$INTERACTIVE" = True ]; then
-        CARD0=$(LC_ALL=C aplay -l | grep bcm2835 | grep "card 0" | cut -d [ -f 3 | cut -d ] -f 1 | cut -d ' ' -f 2-)
-        CARD1=$(LC_ALL=C aplay -l | grep bcm2835 | grep "card 1" | cut -d [ -f 3 | cut -d ] -f 1 | cut -d ' ' -f 2-)
-        CARD2=$(LC_ALL=C aplay -l | grep bcm2835 | grep "card 2" | cut -d [ -f 3 | cut -d ] -f 1 | cut -d ' ' -f 2-)
-        if ! [ -z "$CARD2" ]; then
-          AUDIO_OUT=$(whiptail --menu "Choose the audio output" 20 60 10 \
-            "0" "$CARD0" \
-            "1" "$CARD1" \
-            "2" "$CARD2" \
-            3>&1 1>&2 2>&3)
-        elif ! [ -z "$CARD1" ]; then
-          AUDIO_OUT=$(whiptail --menu "Choose the audio output" 20 60 10 \
-            "0" "$CARD0" \
-            "1" "$CARD1" \
-            3>&1 1>&2 2>&3)
-        elif ! [ -z "$CARD0" ]; then
-          AUDIO_OUT=$(whiptail --menu "Choose the audio output" 20 60 10 \
-            "0" "$CARD0" \
-            3>&1 1>&2 2>&3)
-        else
-          whiptail --msgbox "No internal audio devices found" 20 60 1
+        n=0
+        array=""
+        while [ $n -le 9 ]]
+        do
+          CARD=$(LC_ALL=C aplay -l | grep "card $n" | cut -d [ -f 2 | cut -d ] -f 1)
+          if [ -z "$CARD" ] ; then
+            break
+          else
+            if [ -z "$array" ] ; then
+              array=$n"/"$CARD
+            else
+              array=$array"/"$n"/"$CARD
+            fi
+          fi
+          n=$(( n+1 ))
+        done
+        if [ $n -eq 0 ] ; then
+          whiptail --msgbox "No audio devices found" 20 60 1
           false
+        else
+          oIFS="$IFS"
+          IFS="/"
+          AUDIO_OUT=$(whiptail --menu "Choose the audio output" 20 60 10 ${array} 3>&1 1>&2 2>&3)
+          IFS="$oIFS"
         fi
       else
         AUDIO_OUT=$1
@@ -2216,7 +2285,7 @@ do_resolution() {
     fi
     RES=$(whiptail --default-item $CSET --menu "Choose screen resolution" 20 60 10 ${value} 3>&1 1>&2 2>&3)
     STATUS=$?
-    IFS=$oIFS
+    IFS="$oIFS"
     if [ $STATUS -eq 0 ] ; then
       GRS=$(echo "$RES" | cut -d ' ' -f 1)
       MODE=$(echo "$RES" | cut -d ' ' -f 3)
@@ -2310,45 +2379,38 @@ list_wlan_interfaces() {
   done
 }
 
-list_valid_wlan_interfaces() {
-  IFACES="$(list_wlan_interfaces)"
-  VALID_IFACE_FOUND=""
-  ERROR_MESSAGE=""
-  if [ -z "$IFACES" ]; then
-    ERROR_MESSAGE="No wireless interface found"
-  fi
-
-  for IFACE in $IFACES; do
-    if ! wpa_cli -i "$IFACE" status > /dev/null 2>&1; then
-      ERROR_MESSAGE="Interface could not communicate with wpa_supplicant"
-      continue
-    fi
-    VALID_IFACE_FOUND=1
-    echo "$IFACE"
-  done
-
-  if [ -z "$VALID_IFACE_FOUND" ] && [ -n "$ERROR_MESSAGE" ] && [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "${ERROR_MESSAGE}" 20 60
-  fi
-}
-
 do_wifi_ssid_passphrase() {
   RET=0
-  IFACE_LIST="$(list_valid_wlan_interfaces)"
-  IFACE="$(echo "$IFACE_LIST" | head -n 1)"
-
-  if [ -z "$IFACE" ]; then
-    return 1
-  fi
-
   if [ "$INTERACTIVE" = True ] && [ -z "$(get_wifi_country)" ]; then
     do_wifi_country
   fi
 
+  if systemctl -q is-active dhcpcd; then
+    IFACE="$(list_wlan_interfaces | head -n 1)"
+
+    if [ -z "$IFACE" ]; then
+      if [ "$INTERACTIVE" = True ]; then
+        whiptail --msgbox "No wireless interface found" 20 60
+      fi
+      return 1
+    fi
+
+    if ! wpa_cli -i "$IFACE" status > /dev/null 2>&1; then
+      if [ "$INTERACTIVE" = True ]; then
+        whiptail --msgbox "Could not communicate with wpa_supplicant" 20 60
+      fi
+      return 1
+    fi
+  elif ! systemctl -q is-active NetworkManager; then
+    if [ "$INTERACTIVE" = True ]; then
+        whiptail --msgbox "No supported network connection manager found" 20 60
+      fi
+      return 1
+  fi
+
   SSID="$1"
   while [ -z "$SSID" ] && [ "$INTERACTIVE" = True ]; do
-    SSID=$(whiptail --inputbox "Please enter SSID" 20 60 3>&1 1>&2 2>&3)
-    if [ $? -ne 0 ]; then
+    if ! SSID=$(whiptail --inputbox "Please enter SSID" 20 60 3>&1 1>&2 2>&3); then
       return 0
     elif [ -z "$SSID" ]; then
       whiptail --msgbox "SSID cannot be empty. Please try again." 20 60
@@ -2357,8 +2419,7 @@ do_wifi_ssid_passphrase() {
 
   PASSPHRASE="$2"
   while [ "$INTERACTIVE" = True ]; do
-    PASSPHRASE=$(whiptail --passwordbox "Please enter passphrase. Leave it empty if none." 20 60 3>&1 1>&2 2>&3)
-    if [ $? -ne 0 ]; then
+    if ! PASSPHRASE=$(whiptail --passwordbox "Please enter passphrase. Leave it empty if none." 20 60 3>&1 1>&2 2>&3); then
       return 0
     else
       break
@@ -2366,7 +2427,7 @@ do_wifi_ssid_passphrase() {
   done
 
   # Escape special characters for embedding in regex below
-  local ssid="$(echo "$SSID" \
+  ssid="$(echo "$SSID" \
    | sed 's;\\;\\\\;g' \
    | sed -e 's;\.;\\\.;g' \
          -e 's;\*;\\\*;g' \
@@ -2383,39 +2444,53 @@ do_wifi_ssid_passphrase() {
          -e 's;);\\);g'   \
          -e 's;";\\\\\";g')"
 
-  wpa_cli -i "$IFACE" list_networks \
-   | tail -n +2 | cut -f -2 | grep -P "\t$ssid$" | cut -f1 \
-   | while read ID; do
-    wpa_cli -i "$IFACE" remove_network "$ID" > /dev/null 2>&1
-  done
+  HIDDEN=${3:-0}
+  PLAIN=${4:-1}
 
-  ID="$(wpa_cli -i "$IFACE" add_network)"
-  wpa_cli -i "$IFACE" set_network "$ID" ssid "\"$SSID\"" 2>&1 | grep -q "OK"
-  RET=$((RET + $?))
+  if systemctl -q is-active dhcpcd; then
+    wpa_cli -i "$IFACE" list_networks \
+     | tail -n +2 | cut -f -2 | grep -P "\t$ssid$" | cut -f1 \
+     | while read -r ID; do
+      wpa_cli -i "$IFACE" remove_network "$ID" > /dev/null 2>&1
+    done
 
-  if [ -z "$PASSPHRASE" ]; then
-    wpa_cli -i "$IFACE" set_network "$ID" key_mgmt NONE 2>&1 | grep -q "OK"
+    ID="$(wpa_cli -i "$IFACE" add_network)"
+    wpa_cli -i "$IFACE" set_network "$ID" ssid "\"$SSID\"" 2>&1 | grep -q "OK"
     RET=$((RET + $?))
-  else
-    wpa_cli -i "$IFACE" set_network "$ID" psk "\"$PASSPHRASE\"" 2>&1 | grep -q "OK"
-    RET=$((RET + $?))
-  fi
 
-  if [ $RET -eq 0 ]; then
-    wpa_cli -i "$IFACE" enable_network "$ID" > /dev/null 2>&1
-  else
-    wpa_cli -i "$IFACE" remove_network "$ID" > /dev/null 2>&1
-    if [ "$INTERACTIVE" = True ]; then
-      whiptail --msgbox "Failed to set SSID or passphrase" 20 60
+    if [ -z "$PASSPHRASE" ]; then
+      wpa_cli -i "$IFACE" set_network "$ID" key_mgmt NONE 2>&1 | grep -q "OK"
+      RET=$((RET + $?))
+    else
+      if [ "$PLAIN" = 1 ]; then
+        PASSPHRASE="\"$PASSPHRASE\""
+      fi
+      wpa_cli -i "$IFACE" set_network "$ID" psk "$PASSPHRASE" 2>&1 | grep -q "OK"
+      RET=$((RET + $?))
     fi
+
+    if [ $RET -eq 0 ]; then
+      wpa_cli -i "$IFACE" enable_network "$ID" > /dev/null 2>&1
+    else
+      wpa_cli -i "$IFACE" remove_network "$ID" > /dev/null 2>&1
+      if [ "$INTERACTIVE" = True ]; then
+        whiptail --msgbox "Failed to set SSID or passphrase" 20 60
+      fi
+    fi
+    wpa_cli -i "$IFACE" save_config > /dev/null 2>&1
+    echo "$IFACE_LIST" | while read -r IFACE; do
+      wpa_cli -i "$IFACE" reconfigure > /dev/null 2>&1
+    done
+  else
+    if [ "$HIDDEN" -ne 0 ]; then
+      nmcli device wifi connect "$SSID"  password "$PASSPHRASE" hidden true | grep -q "activated"
+    else
+      nmcli device wifi connect "$SSID"  password "$PASSPHRASE" | grep -q "activated"
+    fi
+    RET=$((RET + $?))
   fi
-  wpa_cli -i "$IFACE" save_config > /dev/null 2>&1
 
-  echo "$IFACE_LIST" | while read IFACE; do
-    wpa_cli -i "$IFACE" reconfigure > /dev/null 2>&1
-  done
-
-  return $RET
+  return "$RET"
 }
 
 do_finish() {
@@ -3069,6 +3144,7 @@ do_advanced_menu() {
       "A6 Boot Order" "Choose network or USB device boot" \
       "A7 Bootloader Version" "Select latest or default boot ROM software" \
       "A9 Wayland" "Enable experimental Wayland backend" \
+      "AA Network Config" "Set network configuration tool" \
       3>&1 1>&2 2>&3)
   elif is_pi ; then
     if is_kms; then
@@ -3080,6 +3156,7 @@ do_advanced_menu() {
       "A5 Network Proxy Settings" "Configure network proxy settings" \
       "A8 Glamor" "Enable/disable glamor graphics acceleration" \
       "A9 Wayland" "Enable experimental Wayland backend" \
+      "AA Network Config" "Set network configuration tool" \
       3>&1 1>&2 2>&3)
     else
     FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Advanced Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
@@ -3088,12 +3165,14 @@ do_advanced_menu() {
       "A4 Network Interface Names" "Enable/disable predictable network i/f names" \
       "A5 Network Proxy Settings" "Configure network proxy settings" \
       "A8 Glamor" "Enable/disable glamor graphics acceleration" \
+      "AA Network Config" "Set network configuration tool" \
       3>&1 1>&2 2>&3)
     fi
   else
     FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Advanced Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
       "A4 Network Interface Names" "Enable/disable predictable network i/f names" \
       "A5 Network Proxy Settings" "Configure network proxy settings" \
+      "AA Network Config" "Set network configuration tool" \
       3>&1 1>&2 2>&3)
   fi
   RET=$?
@@ -3110,6 +3189,7 @@ do_advanced_menu() {
       A7\ *) do_boot_rom ;;
       A8\ *) do_glamor ;;
       A9\ *) do_wayland ;;
+      AA\ *) do_netconf ;;
       *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
   fi

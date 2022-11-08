@@ -1,9 +1,71 @@
-raspi-config (20220629) bullseye; urgency=medium
+raspi-config (20221108) bullseye; urgency=medium
 
   [ Jorge Capona ]
   * Filter wlan interfaces before using wpa_cli
 
  -- Serge Schneider <serge@raspberrypi.com>  Wed, 29 Jun 2022 15:24:31 +0100
+
+raspi-config (20221018) bullseye; urgency=medium
+
+  * do_hostname: add fallback for cases when hostnamectl isn't suitable
+
+ -- Serge Schneider <serge@raspberrypi.com>  Tue, 18 Oct 2022 12:28:15 +0100
+
+raspi-config (20220920) bullseye; urgency=medium
+
+  * Fix keymap setup
+
+ -- Serge Schneider <serge@raspberrypi.com>  Tue, 20 Sep 2022 12:45:40 +0100
+
+raspi-config (20220915) bullseye; urgency=medium
+
+  * Don't attempt to run hostnamectl if dbus is not active
+
+ -- Serge Schneider <serge@raspberrypi.com>  Thu, 15 Sep 2022 12:25:36 +0100
+
+raspi-config (20220914) bullseye; urgency=medium
+
+  * Make get_boot_cli work when systemd is not running
+
+ -- Serge Schneider <serge@raspberrypi.com>  Wed, 14 Sep 2022 16:45:35 +0100
+
+raspi-config (20220907+1) bullseye; urgency=medium
+
+  * Remove /2, which was created by the typo in 20220901
+
+ -- Serge Schneider <serge@raspberrypi.com>  Wed, 07 Sep 2022 17:04:52 +0100
+
+raspi-config (20220907) bullseye; urgency=medium
+
+  * do_netconf: fix typo
+
+ -- Serge Schneider <serge@raspberrypi.com>  Wed, 07 Sep 2022 10:04:56 +0100
+
+raspi-config (20220901) bullseye; urgency=medium
+
+  * Rework do_netconf
+  * Silence options used by firstboot
+
+ -- Serge Schneider <serge@raspberrypi.com>  Thu, 01 Sep 2022 12:35:47 +0100
+
+raspi-config (20220809) bullseye; urgency=medium
+
+  [ Simon Long ]
+  * Modify ALSA switching to work with non-BCM devices
+
+  [ Serge Schneider ]
+  * Make WLAN settings work with NetworkManager
+  * Migrate to crda-based regulatory domain management on upgrade
+  * do_wifi_ssid_passphrase: add flag to allow hashed passphrase input
+  * Switch to dhcpcd here if Imager < v1.7.3 was used to generate firstrun.sh
+
+ -- Serge Schneider <serge@raspberrypi.com>  Tue, 09 Aug 2022 12:05:54 +0100
+
+raspi-config (20220705) bullseye; urgency=medium
+
+  * Add network config switching
+
+ -- Simon Long <simon@raspberrypi.com>  Tue, 05 Jul 2022 14:12:28 +0100
 
 raspi-config (20220506) bullseye; urgency=medium
 

@@ -96,6 +96,21 @@ EOF
   mount -o remount,ro "$BOOT_PART_DEV"
 }
 
+fix_wpa() {
+  if [ -e /boot/firstrun.sh ] \
+     && ! grep -q 'imager_custom set_wlan' /boot/firstrun.sh \
+     && grep -q wpa_supplicant.conf /boot/firstrun.sh; then
+    mount -o remount,rw "$ROOT_PART_DEV"
+    modprobe rfkill
+    REGDOMAIN=$(sed -n 's/^\s*country=\(..\)$/\1/p' /boot/firstrun.sh)
+    [ -n "$REGDOMAIN" ] && raspi-config nonint do_wifi_country "$REGDOMAIN"
+    if systemctl -q is-enabled NetworkManager; then
+      systemctl disable NetworkManager
+    fi
+    mount -o remount,ro "$ROOT_PART_DEV"
+  fi
+}
+
 check_variables () {
   if [ "$NOOBS" = "1" ]; then
     if [ "$EXT_PART_NUM" -gt 4 ] || \
@@ -145,6 +160,9 @@ main () {
   if ! check_variables; then
     return 1
   fi
+
+  # Switch to dhcpcd here if Imager < v1.7.3 was used to generate firstrun.sh
+  fix_wpa > /dev/null 2>&1
 
   check_kernel
 

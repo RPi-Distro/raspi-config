@@ -2374,7 +2374,10 @@ EOF
 list_wlan_interfaces() {
   for dir in /sys/class/net/*/wireless; do
     if [ -d "$dir" ]; then
-      basename "$(dirname "$dir")"
+      IFACE="$(basename "$(dirname "$dir")")"
+      if wpa_cli -i "$IFACE" status &> /dev/null; then
+        echo "$IFACE"
+      fi
     fi
   done
 }

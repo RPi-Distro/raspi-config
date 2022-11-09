@@ -1337,7 +1337,7 @@ do_fan() {
       return 1
     fi
     if [ "$INTERACTIVE" = True ]; then
-        TIN=$(whiptail --inputbox "At what temperature in degrees Celsius should the fan turn on?" 20 60 "$TNOW" 3>&1 1>&2 2>&3)
+      TIN=$(whiptail --inputbox "At what temperature in degrees Celsius should the fan turn on?" 20 60 "$TNOW" 3>&1 1>&2 2>&3)
     else
       if [ -z $3 ]; then
         TIN=80

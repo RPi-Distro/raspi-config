@@ -2166,10 +2166,12 @@ do_net_names () {
 
 do_update() {
   apt-get update &&
-  apt-get install raspi-config &&
-  printf "Sleeping 5 seconds before reloading raspi-config\n" &&
-  sleep 5 &&
-  exec raspi-config
+  apt-get install raspi-config
+  if [ "$INTERACTIVE" = True ]; then
+    printf "Sleeping 5 seconds before reloading raspi-config\n" &&
+    sleep 5 &&
+    exec raspi-config
+   fi
 }
 
 do_audio() {

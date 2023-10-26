@@ -1184,8 +1184,12 @@ do_serial() {
     DEFAULTH=
     CURRENTH=1
   fi
-  whiptail --yesno "Would you like a login shell to be accessible over serial?" $DEFAULTS 20 60 2
-  RET=$?
+  if [ "$INTERACTIVE" = True ]; then
+    whiptail --yesno "Would you like a login shell to be accessible over serial?" $DEFAULTS 20 60 2
+    RET=$?
+  else
+    RET=$1
+  fi
   if [ $RET -eq $CURRENTS ]; then
     ASK_TO_REBOOT=1
   fi
@@ -1197,8 +1201,12 @@ do_serial() {
   elif [ $RET -eq 1 ]; then
     do_serial_cons 1
     SSTATUS=disabled
-    whiptail --yesno "Would you like the serial port hardware to be enabled?" $DEFAULTH 20 60 2
-    RET=$?
+    if [ "$INTERACTIVE" = True ]; then
+      whiptail --yesno "Would you like the serial port hardware to be enabled?" $DEFAULTH 20 60 2
+      RET=$?
+    else
+      RET=$((2 - RET))
+    fi
     if [ $RET -eq $CURRENTH ]; then
       ASK_TO_REBOOT=1
     fi
@@ -1214,7 +1222,9 @@ do_serial() {
   else
     return $RET
   fi
-  whiptail --msgbox "The serial login shell is $SSTATUS\nThe serial interface is $HSTATUS" 20 60 1
+  if [ "$INTERACTIVE" = True ]; then
+    whiptail --msgbox "The serial login shell is $SSTATUS\nThe serial interface is $HSTATUS" 20 60 1
+  fi
 }
 
 do_serial_pi5() {

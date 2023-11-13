@@ -2787,19 +2787,31 @@ do_apply_os_config() {
   return 0
 }
 
+
 get_overlay_now() {
-  grep -q "overlayroot=tmpfs" /proc/cmdline
+  grep -q "overlayroot" /proc/mounts
   echo $?
 }
 
+OVERLAYROOT_CONF_FILE="/etc/overlayroot.local.conf"
 get_overlay_conf() {
-  grep -q "overlayroot=tmpfs" $CMDLINE
-  echo $?
-}
-
-get_bootro_now() {
-  findmnt /boot${FIRMWARE} | grep -q " ro,"
-  echo $?
+  if [ -f "$OVERLAYROOT_CONF_FILE" ]; then
+    # Has `overlayroot` setting &&
+    # Not explicitly disabled &&
+    # Not implicitly disabled, with parameters &&
+    # Not implicity disabled, with no parameters
+    if grep -q '^overlayroot=' "$OVERLAYROOT_CONF_FILE" && \
+      ! grep -q '^overlayroot="disabled' "$OVERLAYROOT_CONF_FILE" && \
+      ! grep -q '^overlayroot=":' "$OVERLAYROOT_CONF_FILE" && \
+      ! grep -q '^overlayroot=""' "$OVERLAYROOT_CONF_FILE"
+    then
+      echo 0
+    else
+      echo 1
+    fi
+  else
+    echo 1
+  fi
 }
 
 get_bootro_conf() {
@@ -2813,48 +2825,31 @@ is_uname_current() {
 
 enable_overlayfs() {
   is_installed overlayroot || apt-get install -y overlayroot
-  # mount the boot partition as writable if it isn't already
-  if [ $(get_bootro_now) -eq 0 ] ; then
-    if ! mount -o remount,rw /boot${FIRMWARE} 2>/dev/null ; then
-      echo "Unable to mount boot partition as writable - cannot enable"
-      return 1
+
+  # If the overlayroot configuration file exists
+  if [ -f "$OVERLAYROOT_CONF_FILE" ]; then
+    # If there is an existing, commented configuration, uncomment it
+    if grep -q '^#overlayroot=' "$OVERLAYROOT_CONF_FILE"; then
+      sed -i "$OVERLAYROOT_CONF_FILE" -e "/^#overlayroot=/s/#//"
+      # If explicitly `disabled`, enable it by replacing `disabled` with `tempfs`
+      if grep -q '^overlayroot="disabled' "$OVERLAYROOT_CONF_FILE"; then
+        sed -i "$OVERLAYROOT_CONF_FILE" -e '/^overlayroot="disabled/s/disabled/tempfs/'
+      fi
+    # Otherwise append the default configuration to enable the overlay
+    else
+      echo "overlayroot=\"tmpfs\"" >> "$OVERLAYROOT_CONF_FILE"
     fi
-    BOOTRO=yes
+  # If the overlayroot configuration file does not exist, create it with the
+  # default configuration to enable the overlay
   else
-    BOOTRO=no
-  fi
-
-  # modify command line
-  if ! grep -q "overlayroot=tmpfs" $CMDLINE ; then
-    sed -i $CMDLINE -e "s/^/overlayroot=tmpfs /"
-  fi
-
-  if [ "$BOOTRO" = "yes" ] ; then
-    if ! mount -o remount,ro /boot${FIRMWARE} 2>/dev/null ; then
-      echo "Unable to remount boot partition as read-only"
-    fi
+    echo "overlayroot=\"tmpfs\"" >> "$OVERLAYROOT_CONF_FILE"
   fi
 }
 
 disable_overlayfs() {
-  # mount the boot partition as writable if it isn't already
-  if [ $(get_bootro_now) -eq 0 ] ; then
-    if ! mount -o remount,rw /boot${FIRMWARE} 2>/dev/null ; then
-      echo "Unable to mount boot partition as writable - cannot disable"
-      return 1
-    fi
-    BOOTRO=yes
-  else
-    BOOTRO=no
-  fi
-
-  # modify command line
-  sed -i $CMDLINE -e "s/\(.*\)overlayroot=tmpfs \(.*\)/\1\2/"
-
-  if [ "$BOOTRO" = "yes" ] ; then
-    if ! mount -o remount,ro /boot${FIRMWARE} 2>/dev/null ; then
-      echo "Unable to remount boot partition as read-only"
-    fi
+  if [ $(get_overlay_now) -eq 0 ] ; then
+    # Comment out the `overlayroot` value in the overlayroot configuration file
+    overlayroot-chroot sed -i $OVERLAYROOT_CONF_FILE -e "s/^overlayroot=/#overlayroot=/"
   fi
 }
 

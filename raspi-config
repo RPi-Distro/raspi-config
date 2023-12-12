@@ -1613,10 +1613,10 @@ do_boot_order() {
     CURDATE=$(date -d "$(vcgencmd bootloader_version |  head -n 1)" +%Y%m%d)
     FILNAME="none"
     EEBASE=$(rpi-eeprom-update | grep RELEASE | sed 's/.*(//g' | sed 's/[^\/]*)//g')
-    if grep -q "stable" /etc/default/rpi-eeprom-update ; then
-      EEPATH="${EEBASE}/stable/pieeprom*.bin"
+    if grep FIRMWARE_RELEASE_STATUS /etc/default/rpi-eeprom-update | egrep -Eq "stable|latest"; then
+      EEPATH="${EEBASE}/latest/pieeprom*.bin"
     else
-      EEPATH="${EEBASE}/critical/pieeprom*.bin"
+      EEPATH="${EEBASE}/default/pieeprom*.bin"
     fi
     for filename in $EEPATH ; do
       FILDATE=$(date -d "$(echo $filename | sed 's/.*\///g' | cut -d - -f 2- | cut -d . -f 1)" +%Y%m%d)
@@ -1687,11 +1687,11 @@ do_boot_rom() {
   if [ $? -eq 0 ]; then
     case "$BOOTOPT" in
       E1*)
-        sed /etc/default/rpi-eeprom-update -i -e "s/^FIRMWARE_RELEASE_STATUS.*/FIRMWARE_RELEASE_STATUS=\"stable\"/"
+        sed /etc/default/rpi-eeprom-update -i -e "s/^FIRMWARE_RELEASE_STATUS.*/FIRMWARE_RELEASE_STATUS=\"latest\"/"
         EETYPE="Latest version"
         ;;
       E2*)
-        sed /etc/default/rpi-eeprom-update -i -e "s/^FIRMWARE_RELEASE_STATUS.*/FIRMWARE_RELEASE_STATUS=\"critical\"/"
+        sed /etc/default/rpi-eeprom-update -i -e "s/^FIRMWARE_RELEASE_STATUS.*/FIRMWARE_RELEASE_STATUS=\"default\"/"
         EETYPE="Factory default"
         ;;
       *)
@@ -1707,10 +1707,10 @@ do_boot_rom() {
     fi
     if [ "$DEFAULTS" -eq 0 ]; then # yes
       EEBASE=$(rpi-eeprom-update | grep RELEASE | sed 's/.*(//g' | sed 's/[^\/]*)//g')
-      if grep -q "stable" /etc/default/rpi-eeprom-update ; then
-        EEPATH="${EEBASE}/stable/"
+      if grep FIRMWARE_RELEASE_STATUS /etc/default/rpi-eeprom-update | egrep -Eq "stable|latest"; then
+        EEPATH="${EEBASE}/latest/"
       else
-        EEPATH="${EEBASE}/critical/"
+        EEPATH="${EEBASE}/default/"
       fi
       MATCH=".*/pieeprom-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].bin"
       FILNAME="$(find "${EEPATH}" -maxdepth 1 -type f -regex "${MATCH}" | sort -r | head -n1)"

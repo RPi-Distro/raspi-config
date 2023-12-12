@@ -1601,8 +1601,8 @@ EOF
 do_boot_order() {
   if [ "$INTERACTIVE" = True ]; then
     BOOTOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Boot Device Order" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
-      "B1 SD Card Boot" "Boot from SD Card if available, otherwise boot from USB" \
-      "B2 USB Boot" "Boot from USB if available, otherwise boot from SD Card" \
+      "B1 SD Card Boot" "Boot from SD Card if available, otherwise boot from NVMe or USB" \
+      "B2 NVMe/USB Boot" "Boot from NVMe if available, otherwise boot from USB or SD Card" \
       "B3 Network Boot" "Boot from network if SD card boot fails" \
       3>&1 1>&2 2>&3)
   else
@@ -1637,20 +1637,30 @@ do_boot_order() {
     sed $EECFG -i -e "/NET_BOOT_MAX_RETRIES/d"
     case "$BOOTOPT" in
       B1*)
-        if ! grep -q "BOOT_ORDER" $EECFG ; then
-          sed $EECFG -i -e "\$a[all]\nBOOT_ORDER=0xf41"
+        if is_pifive; then
+           ORD=0xf461
         else
-          sed $EECFG -i -e "s/^BOOT_ORDER=.*/BOOT_ORDER=0xf41/"
+           ORD=0xf41
+        fi
+        if ! grep -q "BOOT_ORDER" $EECFG ; then
+          sed $EECFG -i -e "\$a[all]\nBOOT_ORDER=${ORD}"
+        else
+          sed $EECFG -i -e "s/^BOOT_ORDER=.*/BOOT_ORDER=${ORD}/"
         fi
         STATUS="SD Card"
         ;;
       B2*)
-        if ! grep -q "BOOT_ORDER" $EECFG ; then
-          sed $EECFG -i -e "\$a[all]\nBOOT_ORDER=0xf14"
+        if is_pifive; then
+           ORD=0xf146
         else
-          sed $EECFG -i -e "s/^BOOT_ORDER=.*/BOOT_ORDER=0xf14/"
+           ORD=0xf14
         fi
-        STATUS="USB"
+        if ! grep -q "BOOT_ORDER" $EECFG ; then
+          sed $EECFG -i -e "\$a[all]\nBOOT_ORDER=${ORD}"
+        else
+          sed $EECFG -i -e "s/^BOOT_ORDER=.*/BOOT_ORDER=${ORD}/"
+        fi
+        STATUS="NVMe/USB"
         ;;
       B3*)
         if ! grep -q "BOOT_ORDER" $EECFG ; then
@@ -3274,7 +3284,7 @@ do_advanced_menu() {
       "A1 Expand Filesystem" "Ensures that all of the SD card is available" \
       "A2 Network Interface Names" "Enable/disable predictable network i/f names" \
       "A3 Network Proxy Settings" "Configure network proxy settings" \
-      "A4 Boot Order" "Choose network or USB device boot" \
+      "A4 Boot Order" "Choose network or USB or NVMe device boot" \
       "A5 Bootloader Version" "Select latest or default boot ROM software" \
       "A6 Wayland" "Switch between X and Wayland backends" \
       "A7 Audio Config" "Set audio control system" \

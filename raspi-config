@@ -1620,7 +1620,6 @@ do_boot_order() {
     fi
     for filename in $EEPATH ; do
       FILDATE=$(date -d "$(echo $filename | sed 's/.*\///g' | cut -d - -f 2- | cut -d . -f 1)" +%Y%m%d)
-      echo $FILDATE
       if [ $FILDATE -eq $CURDATE ]; then
         FILNAME=$filename
       fi

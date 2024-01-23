@@ -1312,7 +1312,7 @@ do_fan() {
     whiptail --yesno "Would you like to enable fan temperature control?" $DEFAULT 20 60 2
     RET=$?
   else
-    RET=$1
+    RET=$(expr 1 - $1)
   fi
   if [ $RET -eq 0 ] ; then
     if [ "$INTERACTIVE" = True ]; then

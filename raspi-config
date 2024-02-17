@@ -1611,9 +1611,9 @@ EOF
 do_boot_order() {
   if [ "$INTERACTIVE" = True ]; then
     BOOTOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Boot Device Order" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
-      "B1 SD Card Boot" "Boot from SD Card if available, otherwise boot from NVMe or USB" \
-      "B2 NVMe/USB Boot" "Boot from NVMe if available, otherwise boot from USB or SD Card" \
-      "B3 Network Boot" "Boot from network if SD card boot fails" \
+      "B1 SD Card Boot " "Boot from SD Card before trying NVMe and then USB (RECOMMENDED)" \
+      "B2 NVMe/USB Boot" "Boot from NVMe before trying USB and then SD Card" \
+      "B3 Network Boot " "Boot from Network unless override by SD Card" \
       3>&1 1>&2 2>&3)
   else
     BOOTOPT=$1
@@ -1695,9 +1695,9 @@ do_boot_order() {
 
 do_boot_rom() {
   if [ "$INTERACTIVE" = True ]; then
-    BOOTOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Boot ROM Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
-      "E1 Latest" "Use the latest version boot ROM software" \
-      "E2 Default" "Use the factory default boot ROM software" \
+    BOOTOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Bootloader Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+      "E1 Latest" "Use the latest bootloader image" \
+      "E2 Default" "Use the factory default bootloader image" \
       3>&1 1>&2 2>&3)
   else
     BOOTOPT=$1
@@ -1714,12 +1714,12 @@ do_boot_rom() {
         EETYPE="Factory default"
         ;;
       *)
-        whiptail --msgbox "Programmer error, unrecognised boot ROM option" 20 60 2
+        whiptail --msgbox "Programmer error, unrecognised bootloader option" 20 60 2
         return 1
         ;;
     esac
     if [ "$INTERACTIVE" = True ]; then
-      whiptail --yesno "$EETYPE boot ROM selected - will be loaded at next reboot.\n\nReset boot ROM to defaults?" 20 60 2
+      whiptail --yesno "$EETYPE bootloader selected - will be loaded at next reboot.\n\nReset bootloader to default configuration?" 20 60 2
       DEFAULTS=$?
     else
       DEFAULTS=$2
@@ -1735,18 +1735,18 @@ do_boot_rom() {
       FILNAME="$(find "${EEPATH}" -maxdepth 1 -type f -regex "${MATCH}" | sort -r | head -n1)"
       if [ -z "$FILNAME" ]; then
         if [ "$INTERACTIVE" = True ]; then
-          whiptail --msgbox "No EEPROM bin file found - cannot reset to defaults" 20 60 2
+          whiptail --msgbox "No EEPROM bin file found - cannot reset to defaults,\n\nTry updating APT rpi-eeprom package and selecting the latest release." 20 60 2
         fi
       else
         rpi-eeprom-update -d -f $FILNAME
         if [ "$INTERACTIVE" = True ]; then
-          whiptail --msgbox "Boot ROM reset to defaults" 20 60 2
+          whiptail --msgbox "Bootloader reset to default configuration" 20 60 2
         fi
       fi
     else
       rpi-eeprom-update
       if [ "$INTERACTIVE" = True ]; then
-        whiptail --msgbox "Boot ROM not reset to defaults" 20 60 2
+        whiptail --msgbox "Bootloader not reset to defaults" 20 60 2
       fi
     fi
     ASK_TO_REBOOT=1
@@ -3293,8 +3293,8 @@ do_advanced_menu() {
       "A1 Expand Filesystem" "Ensures that all of the SD card is available" \
       "A2 Network Interface Names" "Enable/disable predictable network i/f names" \
       "A3 Network Proxy Settings" "Configure network proxy settings" \
-      "A4 Boot Order" "Choose network or USB or NVMe device boot" \
-      "A5 Bootloader Version" "Select latest or default boot ROM software" \
+      "A4 Boot Order" "Choose SD, network, USB or NVMe device boot priority" \
+      "A5 Bootloader Version" "Select latest or factory default bootloader software" \
       "A6 Wayland" "Switch between X and Wayland backends" \
       "A7 Audio Config" "Set audio control system" \
       3>&1 1>&2 2>&3)

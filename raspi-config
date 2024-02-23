@@ -1717,15 +1717,19 @@ do_boot_order() {
     else
       EEPATH="${EEBASE}/default/pieeprom*.bin"
     fi
-    for filename in $EEPATH ; do
+    for filename in $(find $EEPATH -name "pieeprom*.bin" 2>/dev/null | sort); do
       FILDATE=$(date -d "$(echo $filename | sed 's/.*\///g' | cut -d - -f 2- | cut -d . -f 1)" +%Y%m%d)
       if [ $FILDATE -eq $CURDATE ]; then
+        FILNAME=$filename
+        break
+      elif [ "$FILDATE" ">" "$CURDATE" ]; then
+        # If there is no exact match then try an upgrade
         FILNAME=$filename
       fi
     done
     if [ "$FILNAME" = "none" ]; then
       if [ "$INTERACTIVE" = True ]; then
-        whiptail --msgbox "No EEPROM bin file found for version $(date -d $CURDATE +%Y-%m-%d) - aborting" 20 60 2
+        whiptail --msgbox "Current EEPROM version $(date -d $CURDATE +%Y-%m-%d) or newer not found - aborting.\n\nTry updating the rpi-eeprom APT package." 20 70 2
       fi
       return 1
     fi

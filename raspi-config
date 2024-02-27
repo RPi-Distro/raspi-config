@@ -2625,7 +2625,7 @@ enable_overlayfs() {
     BOOTRO=no
   fi
 
-  cat > /etc/initramfs-tools/scripts/overlay << 'EOF'
+  sed -e "s!MOUNT_POINT!$MOUNT_POINT!g" > /etc/initramfs-tools/scripts/overlay << 'EOF'
 # Local filesystem mounting			-*- shell-script -*-
 
 #
@@ -2658,24 +2658,24 @@ local_mount_root()
 	checkfs ${ROOT} root "${FSTYPE}"
 
 	# Create directories for root and the overlay
-	mkdir /lower /upper
+	mkdir MOUNT_POINT/lower MOUNT_POINT/upper
 
-	# Mount read-only root to /lower
+	# Mount read-only root to MOUNT_POINT/lower
 	if [ "${FSTYPE}" != "unknown" ]; then
-		mount -r -t ${FSTYPE} ${ROOTFLAGS} ${ROOT} /lower
+		mount -r -t ${FSTYPE} ${ROOTFLAGS} ${ROOT} MOUNT_POINT/lower
 	else
-		mount -r ${ROOTFLAGS} ${ROOT} /lower
+		mount -r ${ROOTFLAGS} ${ROOT} MOUNT_POINT/lower
 	fi
 
-	modprobe overlay || insmod "/lower/lib/modules/$(uname -r)/kernel/fs/overlayfs/overlay.ko"
+	modprobe overlay || insmod "MOUNT_POINT/lower/lib/modules/$(uname -r)/kernel/fs/overlayfs/overlay.ko"
 
-	# Mount a tmpfs for the overlay in /upper
-	mount -t tmpfs tmpfs /upper
-	mkdir /upper/data /upper/work
+	# Mount a tmpfs for the overlay in MOUNT_POINT/upper
+	mount -t tmpfs tmpfs MOUNT_POINT/upper
+	mkdir MOUNT_POINT/upper/data MOUNT_POINT/upper/work
 
 	# Mount the final overlay-root in $rootmnt
 	mount -t overlay \
-	    -olowerdir=/lower,upperdir=/upper/data,workdir=/upper/work \
+	    -olowerdir=MOUNT_POINT/lower,upperdir=MOUNT_POINT/upper/data,workdir=MOUNT_POINT/upper/work \
 	    overlay ${rootmnt}
 }
 EOF
@@ -2686,7 +2686,9 @@ EOF
   fi
 
   # build the new initramfs
-  update-initramfs -c -k "$KERN"
+  if ! update-initramfs -c -k "$KERN" ; then
+      echo "Failed to build the new initramfs ${KERN}"
+  fi
 
   # rename it so we know it has overlay added
   mv /boot/initrd.img-"$KERN" /boot/"$INITRD"
@@ -2724,7 +2726,11 @@ disable_overlayfs() {
 
   # modify config.txt
   sed -i /boot/config.txt -e "/initramfs.*/d"
-  update-initramfs -d -k "${KERN}-overlay"
+
+  # delete the existing initramfs
+  if ! update-initramfs -d -k "${KERN}-overlay" ; then
+      echo "Failed to delete initramfs ${KERN}-overlay"
+  fi
 
   # modify command line
   sed -i $CMDLINE -e "s/\(.*\)boot=overlay \(.*\)/\1\2/"
@@ -2753,6 +2759,14 @@ disable_bootro() {
 }
 
 do_overlayfs() {
+  if [ "$INTERACTIVE" = False -a ! "$1" ]; then echo '
+  do_overlayfs status [ writable [ invisible ] ]
+    "status" can be 0=enable or 1=disable overlayfs (default)
+    "writable" can be 0=read-only (default) or 1=writable boot partition
+    "invisible" (used when enabling the overlayfs) can be 0=visible mounts or 1=invisible mounts (default)
+'
+    return 1
+  fi
   DEFAULT=--defaultno
   CURRENT=0
   STATUS="disabled"
@@ -2773,7 +2787,26 @@ do_overlayfs() {
   else
     RET=$1
   fi
+  case "$RET" in ''|*[!01]*) RET=1;; esac
   if [ $RET -eq $CURRENT ]; then
+    MOUNT_POINT="/run"
+    if [ "$INTERACTIVE" = True -a $RET -eq 0 ]; then
+      whiptail --yesno "Would you like the mount points of the overlay file system to be visible under '$MOUNT_POINT/upper' (rw) and '$MOUNT_POINT/lower' (ro)?" $DEFAULT 20 60 2
+      MP=$?
+    else
+      MP=$3
+    fi
+    case "$MP" in ''|*[!01]*) MP=1;; esac
+    if [ $MP -eq 1 ]; then
+      MOUNT_POINT=""
+      if [ "$INTERACTIVE" = False ]; then
+        echo "Invisible mount points"
+      fi
+    else
+      if [ "$INTERACTIVE" = False ]; then
+        echo "Mount points under '$MOUNT_POINT'"
+      fi
+    fi
     if [ $RET -eq 0 ]; then
       if enable_overlayfs; then
         STATUS="enabled"
@@ -2817,12 +2850,16 @@ do_overlayfs() {
       whiptail --yesno "Would you like the boot partition to be write-protected?" $DEFAULT 20 60 2
       RET=$?
     else
-      RET=$1
+      RET=$2
     fi
+    case "$RET" in ''|*[!01]*) RET=0;; esac
     if [ $RET -eq $CURRENT ]; then
       if [ $RET -eq 0 ]; then
         if enable_bootro; then
           STATUS="read-only"
+          if [ "$INTERACTIVE" = False ]; then
+            echo "Boot partition is $STATUS"
+          fi
           ASK_TO_REBOOT=1
         else
           STATUS="unchanged"
@@ -2830,6 +2867,9 @@ do_overlayfs() {
       elif [ $RET -eq 1 ]; then
         if disable_bootro; then
           STATUS="writable"
+          if [ "$INTERACTIVE" = False ]; then
+            echo "Boot partition is $STATUS"
+          fi
           ASK_TO_REBOOT=1
         else
           STATUS="unchanged"

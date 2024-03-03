@@ -2817,7 +2817,7 @@ do_overlayfs() {
       whiptail --yesno "Would you like the boot partition to be write-protected?" $DEFAULT 20 60 2
       RET=$?
     else
-      RET=$1
+      RET=${2:-$1}
     fi
     if [ $RET -eq $CURRENT ]; then
       if [ $RET -eq 0 ]; then

@@ -824,8 +824,12 @@ do_wifi_country() {
     wpa_cli -i "$IFACE" save_config > /dev/null 2>&1
   fi
 
-  if [ "$INIT" = "systemd" ] && ! ischroot && systemctl -q is-active NetworkManager; then
-    nmcli radio wifi on
+  if [ "$INIT" = "systemd" ] && ! ischroot && systemctl -q is-enabled NetworkManager; then
+    if systemctl -q is-active NetworkManager; then
+      nmcli radio wifi on
+    elif [ -e /var/lib/NetworkManager/NetworkManager.state ]; then
+      sed /var/lib/NetworkManager/NetworkManager.state -i -e "s/^WirelessEnabled=.*/WirelessEnabled=true/"
+    fi
   elif hash rfkill 2> /dev/null; then
     rfkill unblock wifi
   fi

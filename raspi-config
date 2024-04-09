@@ -2330,7 +2330,7 @@ do_audioconf() {
     if [ "$PPENABLED" = 0 ] ; then
       DEFAULT=2
     fi
-    if ! is_installed pulseaudio && ! is_installed pipewire-pulse ; then 
+    if ! is_installed pulseaudio && ! is_installed pipewire-pulse ; then
       whiptail --msgbox "No audio systems installed" 20 60 1
       RET=1
     else
@@ -2436,7 +2436,7 @@ do_audio() {
   if is_pulseaudio ; then
     oIFS="$IFS"
     if [ "$INTERACTIVE" = True ]; then
-      list=$(sudo -u $USER XDG_RUNTIME_DIR=/run/user/$SUDO_UID pactl list sinks | grep -e "Sink #" -e "alsa.card_name" | sed s/*//g | sed s/^[' '\\t]*//g | sed s/'Sink #'//g | sed s/'alsa.card_name = '//g | sed s/'bcm2835 '//g | sed s/\"//g | tr '\n' '/')
+      list=$(sudo -u $USER XDG_RUNTIME_DIR=/run/user/$SUDO_UID LANG=C pactl list sinks | grep -e "Sink #" -e "alsa.card_name" | sed s/*//g | sed s/^[' '\\t]*//g | sed s/'Sink #'//g | sed s/'alsa.card_name = '//g | sed s/'bcm2835 '//g | sed s/\"//g | tr '\n' '/')
       if [ -n "$list" ] ; then
         IFS="/"
         AUDIO_OUT=$(whiptail --menu "Choose the audio output" 20 60 10 ${list} 3>&1 1>&2 2>&3)

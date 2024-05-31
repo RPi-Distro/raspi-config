@@ -2871,10 +2871,11 @@ do_wifi_ssid_passphrase() {
       wpa_cli -i "$IFACE" reconfigure > /dev/null 2>&1
     done
   else
+    IFACE="$(list_wlan_interfaces | head -n 1)"
     if [ "$HIDDEN" -ne 0 ]; then
-      nmcli device wifi connect "$SSID"  password "$PASSPHRASE" hidden true | grep -q "activated"
+      nmcli device wifi connect "$SSID" password "$PASSPHRASE" ifname "${IFACE}" hidden true | grep -q "activated"
     else
-      nmcli device wifi connect "$SSID"  password "$PASSPHRASE" | grep -q "activated"
+      nmcli device wifi connect "$SSID" password "$PASSPHRASE" ifname "${IFACE}" | grep -q "activated"
     fi
     RET=$((RET + $?))
   fi

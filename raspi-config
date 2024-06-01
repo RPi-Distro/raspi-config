@@ -3589,7 +3589,13 @@ if [ "$INTERACTIVE" = True ]; then
   done
   while true; do
     if is_pi ; then
-      FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --backtitle "$(cat /proc/device-tree/model)" --menu "Setup Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Finish --ok-button Select \
+      MEMSIZE=$(vcgencmd get_config total_mem|cut -d= -f2)
+      if [ $MEMSIZE -lt 1024 ]; then
+        FMEMSIZE="${MEMSIZE}MB"
+      else
+        FMEMSIZE="$(expr $MEMSIZE / 1024)GB"
+      fi
+      FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --backtitle "$(cat /proc/device-tree/model), ${FMEMSIZE}" --menu "Setup Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Finish --ok-button Select \
         "1 System Options" "Configure system settings" \
         "2 Display Options" "Configure display settings" \
         "3 Interface Options" "Configure connections to peripherals" \

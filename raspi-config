@@ -565,7 +565,8 @@ do_blanking() {
       ASK_TO_REBOOT=1
     fi
     if [ "$RET" -eq 0 ] ; then
-      echo "swayidle -w timeout 600 'wlopm --off \\*' resume 'wlopm --on \\*' &" >> $LABWCAST_FILE
+      DEBIAN_FRONTEND=noninteractive apt install brightnessctl -y
+      echo "swayidle -w timeout 600 'brightnessctl -d \* -q set 0' resume 'brightnessctl -d \* -q set 100' &" >> $LABWCAST_FILE
       STATUS=enabled
     elif [ "$RET" -eq 1 ]; then
       sed -i '/swayidle/d' $LABWCAST_FILE

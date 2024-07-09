@@ -38,9 +38,18 @@ is_pi () {
   fi
 }
 
+is_64bit () {
+  ARCH=$(dpkg --print-architecture)
+  if [ "$ARCH" = "arm64" ] ; then
+    return 0
+  else
+    return 1
+  fi
+}
+
 if is_pi ; then
   if [ -e /proc/device-tree/chosen/os_prefix ]; then
-    PREFIX="$(cat /proc/device-tree/chosen/os_prefix)"
+    PREFIX="$(tr -d '\0' < /proc/device-tree/chosen/os_prefix)"
   fi
   CMDLINE="/boot${FIRMWARE}/${PREFIX}cmdline.txt"
 else
@@ -1121,19 +1130,27 @@ do_rpi_connect() {
   fi
   if [ $RET -eq 0 ]; then
     if is_installed rpi-connect || apt-get install "$APT_GET_FLAGS" rpi-connect; then
-      $PREFIX systemctl --user -q enable rpi-connect.service
-      $PREFIX systemctl --user -q start rpi-connect.service
-      $PREFIX systemctl --user -q enable rpi-connect-wayvnc.service
-      $PREFIX systemctl --user -q start rpi-connect-wayvnc.service
+      rpi_connect_version="$(get_package_version rpi-connect)"
+      if dpkg --compare-versions "$rpi_connect_version" lt 1.3; then
+        systemctl --global -q enable rpi-connect.service rpi-connect-wayvnc.service
+        $PREFIX systemctl --global -q start rpi-connect.service rpi-connect-wayvnc.service
+      else
+        systemctl --global -q enable rpi-connect.service rpi-connect-wayvnc.service rpi-connect-wayvnc-watcher.path
+        $PREFIX systemctl --global -q start rpi-connect.service
+      fi
       STATUS=enabled
     else
       return 1
     fi
   elif [ $RET -eq 1 ]; then
-    $PREFIX systemctl --user -q disable rpi-connect-wayvnc.service
-    $PREFIX systemctl --user -q stop rpi-connect-wayvnc.service
-    $PREFIX systemctl --user -q disable rpi-connect.service
-    $PREFIX systemctl --user -q stop rpi-connect.service
+    rpi_connect_version="$(get_package_version rpi-connect)"
+    if dpkg --compare-versions "$rpi_connect_version" lt 1.3; then
+      $PREFIX systemctl --global -q stop rpi-connect.service rpi-connect-wayvnc.service
+      systemctl --global -q disable rpi-connect-wayvnc.service rpi-connect.service
+    else
+      $PREFIX systemctl --global -q stop rpi-connect.service
+      systemctl --global -q disable rpi-connect.service rpi-connect-wayvnc.service rpi-connect-wayvnc-watcher.path
+    fi
     STATUS=disabled
   else
     return $RET
@@ -1395,8 +1412,10 @@ get_pci() {
 
 do_pci() {
   DEFAULT=--defaultno
+  CURRENT=1
   if [ $(get_pci) -eq 0 ]; then
     DEFAULT=
+    CURRENT=0
   fi
   if [ "$INTERACTIVE" = True ]; then
     whiptail --yesno "Would you like PCIe Gen 3 to be enabled?" $DEFAULT 20 60 2
@@ -1412,6 +1431,9 @@ do_pci() {
     STATUS=disabled
   else
     return $RET
+  fi
+  if [ $RET -ne $CURRENT ]; then
+    ASK_TO_REBOOT=1
   fi
 
   if [ "$INTERACTIVE" = True ]; then
@@ -2871,10 +2893,11 @@ do_wifi_ssid_passphrase() {
       wpa_cli -i "$IFACE" reconfigure > /dev/null 2>&1
     done
   else
+    IFACE="$(list_wlan_interfaces | head -n 1)"
     if [ "$HIDDEN" -ne 0 ]; then
-      nmcli device wifi connect "$SSID"  password "$PASSPHRASE" hidden true | grep -q "activated"
+      nmcli device wifi connect "$SSID" password "$PASSPHRASE" ifname "${IFACE}" hidden true | grep -q "activated"
     else
-      nmcli device wifi connect "$SSID"  password "$PASSPHRASE" | grep -q "activated"
+      nmcli device wifi connect "$SSID" password "$PASSPHRASE" ifname "${IFACE}" | grep -q "activated"
     fi
     RET=$((RET + $?))
   fi
@@ -2991,6 +3014,14 @@ is_uname_current() {
 }
 
 enable_overlayfs() {
+  if [ "$(awk '/MemTotal/{print $2; exit}' /proc/meminfo)" -le 262144 ]; then
+    if [ "$INTERACTIVE" = True ]; then
+      whiptail --msgbox "At least 512MB of RAM is recommended for overlay filesystem" 20 60 1
+    else
+      echo "At least 512MB of RAM is recommended for overlay filesystem"
+    fi
+    return 1
+  fi
   is_installed overlayroot || apt-get install -y overlayroot
   # mount the boot partition as writable if it isn't already
   if [ $(get_bootro_now) -eq 0 ] ; then
@@ -3243,6 +3274,58 @@ do_usb_current() {
   fi
 }
 
+get_squeekboard() {
+  if [ -e /etc/xdg/autostart/squeekboard.desktop ] ; then
+    echo 0
+  else
+    echo 1
+  fi
+}
+
+do_squeekboard() {
+  DEFAULT=--defaultno
+  if [ $(get_squeekboard) -eq 0 ]; then
+    DEFAULT=
+  fi
+  if [ "$INTERACTIVE" = True ]; then
+    whiptail --yesno "Would you like the on-screen keyboard to be enabled?" $DEFAULT 20 60 2
+    RET=$?
+  else
+    RET=$1
+  fi
+  if [ $RET -eq 0 ]; then
+    is_installed squeekboard || apt-get install -y squeekboard
+    cat > /etc/xdg/autostart/squeekboard.desktop << EOF
+[Desktop Entry]
+Name=Squeekboard
+Comment=Launch the on-screen keyboard
+Exec=/usr/bin/squeekboard
+Terminal=false
+Type=Application
+NoDisplay=true
+EOF
+    if ! grep -q squeekboard /usr/share/labwc/autostart ; then
+      echo "/usr/bin/squeekboard &" >> /usr/share/labwc/autostart
+    fi
+    PREFIX=""
+    if [ -n "$SUDO_USER" ] ; then
+      PREFIX="sudo -u $USER XDG_RUNTIME_DIR=/run/user/$SUDO_UID DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$SUDO_UID/bus "
+    fi
+    $PREFIX squeekboard > /dev/null 2> /dev/null &
+    STATUS=enabled
+  elif [ $RET -eq 1 ]; then
+    pkill squeekboard
+    rm -f /etc/xdg/autostart/squeekboard.desktop
+    sed -i '/squeekboard/d' /usr/share/labwc/autostart
+    STATUS=disabled
+  else
+    return $RET
+  fi
+  if [ "$INTERACTIVE" = True ]; then
+    whiptail --msgbox "The onscreen keyboard is $STATUS" 20 60 1
+  fi
+}
+
 
 do_kernels() {
 
@@ -3403,11 +3486,13 @@ do_display_menu() {
           "D2 Screen Blanking" "Enable/disable screen blanking" \
           "D4 Composite" "Enable/disable composite output" \
           "D5 4Kp60 HDMI" "Enable 4Kp60 resolution on HDMI0" \
+          "D6 Onscreen Keyboard" "Enable on-screen keyboard" \
           3>&1 1>&2 2>&3)
       else
         FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
           "D2 Screen Blanking" "Enable/disable screen blanking" \
           "D4 Composite" "Enable/disable composite output" \
+          "D6 Onscreen Keyboard" "Enable on-screen keyboard" \
           3>&1 1>&2 2>&3)
       fi
     else
@@ -3444,6 +3529,7 @@ do_display_menu() {
       D3\ *) do_vnc_resolution ;;
       D4\ *) do_composite ;;
       D5\ *) do_pi4video ;;
+      D6\ *) do_squeekboard ;;
       *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
   fi
@@ -3451,28 +3537,16 @@ do_display_menu() {
 
 do_interface_menu() {
   if is_pi ; then
-    if is_wayland; then
-      FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Interfacing Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-        "I1 SSH" "Enable/disable remote command line access using SSH" \
-        "I2 RPi Connect" "Enable/disable Raspberry Pi Connect" \
-        "I3 VNC" "Enable/disable graphical remote desktop access" \
-        "I4 SPI" "Enable/disable automatic loading of SPI kernel module" \
-        "I5 I2C" "Enable/disable automatic loading of I2C kernel module" \
-        "I6 Serial Port" "Enable/disable shell messages on the serial connection" \
-        "I7 1-Wire" "Enable/disable one-wire interface" \
-        "I8 Remote GPIO" "Enable/disable remote access to GPIO pins" \
-        3>&1 1>&2 2>&3)
-    else
-      FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Interfacing Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-        "I1 SSH" "Enable/disable remote command line access using SSH" \
-        "I3 VNC" "Enable/disable graphical remote desktop access" \
-        "I4 SPI" "Enable/disable automatic loading of SPI kernel module" \
-        "I5 I2C" "Enable/disable automatic loading of I2C kernel module" \
-        "I6 Serial Port" "Enable/disable shell messages on the serial connection" \
-        "I7 1-Wire" "Enable/disable one-wire interface" \
-        "I8 Remote GPIO" "Enable/disable remote access to GPIO pins" \
-        3>&1 1>&2 2>&3)
-    fi
+    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Interfacing Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+      "I1 SSH" "Enable/disable remote command line access using SSH" \
+      "I2 RPi Connect" "Enable/disable Raspberry Pi Connect" \
+      "I3 VNC" "Enable/disable graphical remote desktop access" \
+      "I4 SPI" "Enable/disable automatic loading of SPI kernel module" \
+      "I5 I2C" "Enable/disable automatic loading of I2C kernel module" \
+      "I6 Serial Port" "Enable/disable shell messages on the serial connection" \
+      "I7 1-Wire" "Enable/disable one-wire interface" \
+      "I8 Remote GPIO" "Enable/disable remote access to GPIO pins" \
+      3>&1 1>&2 2>&3)
   else
     FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Interfacing Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
       "I2 SSH" "Enable/disable remote command line access using SSH" \
@@ -3637,7 +3711,13 @@ if [ "$INTERACTIVE" = True ]; then
   done
   while true; do
     if is_pi ; then
-      FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --backtitle "$(cat /proc/device-tree/model)" --menu "Setup Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Finish --ok-button Select \
+      MEMSIZE=$(vcgencmd get_config total_mem|cut -d= -f2)
+      if [ $MEMSIZE -lt 1024 ]; then
+        FMEMSIZE="${MEMSIZE}MB"
+      else
+        FMEMSIZE="$(expr $MEMSIZE / 1024)GB"
+      fi
+      FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --backtitle "$(cat /proc/device-tree/model), ${FMEMSIZE}" --menu "Setup Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Finish --ok-button Select \
         "1 System Options" "Configure system settings" \
         "2 Display Options" "Configure display settings" \
         "3 Interface Options" "Configure connections to peripherals" \

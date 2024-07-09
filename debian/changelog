@@ -1,3 +1,44 @@
+raspi-config (20240708) bookworm; urgency=medium
+
+  [ Paul Mucur ]
+  * Compatibility with RPi Connect 1.3.0
+
+ -- Simon Long <simon@raspberrypi.com>  Mon, 08 Jul 2024 11:24:56 +0100
+
+raspi-config (20240625) bookworm; urgency=medium
+
+  [ Simon Long ]
+  * Enable and disable RPi Connect for all users
+
+ -- Simon Long <simon@raspberrypi.com>  Tue, 25 Jun 2024 09:13:26 +0100
+
+raspi-config (20240624+1) bookworm; urgency=medium
+
+  * Add RAM check for overlay filesystem
+  * Add gbp.conf
+
+ -- Serge Schneider <serge@raspberrypi.com>  Mon, 24 Jun 2024 15:51:27 +0100
+
+raspi-config (20240624) bookworm; urgency=medium
+
+  [ Simon Long]
+  * Add RPi Connect for 32 bit and X
+
+ -- Simon Long <simon@raspberrypi.com>  Mon, 24 Jun 2024 13:16:59 +0100
+
+raspi-config (20240618) bookworm; urgency=medium
+
+  [ Simon Long ]
+  * Do not offer RPi Connect on 32-bit
+
+ -- Simon Long <simon@raspberrypi.com>  Tue, 18 Jun 2024 14:54:01 +0100
+
+raspi-config (20240612) bookworm; urgency=medium
+
+  * Strip null byte from os_prefix
+
+ -- Serge Schneider <serge@raspberrypi.com>  Wed, 12 Jun 2024 11:10:46 +0100
+
 raspi-config (20240521) bookworm; urgency=medium
 
   [ Simon Long ]

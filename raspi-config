@@ -994,7 +994,7 @@ do_ssh() {
   fi
   if [ "$INTERACTIVE" = True ]; then
     whiptail --yesno \
-      "Would you like the SSH and FTP to be enabled?\n\nCaution: Default and weak passwords are a security risk when SSH and FTP are enabled!" \
+      "Would you like the SSH (command line) and SFTP (file transfer) to be enabled?\n\nCaution: Default and weak passwords are a security risk when SSH and SFTP are enabled!" \
       $DEFAULT 20 60 2
     RET=$?
   else
@@ -3497,7 +3497,7 @@ do_display_menu() {
 do_interface_menu() {
   if is_pi ; then
     FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Interfacing Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-      "I1 SSH & FTP" "Enable/disable SSH (remote command line access) and FTP (File Transfer Protocol)" \
+      "I1 SSH & SFTP" "Enable/disable SSH (remote command line access) and SFTP (SSH File Transfer Protocol)" \
       "I2 RPi Connect" "Enable/disable Raspberry Pi Connect" \
       "I3 VNC" "Enable/disable graphical remote desktop access" \
       "I4 SPI" "Enable/disable automatic loading of SPI kernel module" \

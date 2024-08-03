@@ -994,7 +994,7 @@ do_ssh() {
   fi
   if [ "$INTERACTIVE" = True ]; then
     whiptail --yesno \
-      "Would you like the SSH server and FTP to be enabled?\n\nCaution: Default and weak passwords are a security risk when SSH is enabled!" \
+      "Would you like the SSH and FTP to be enabled?\n\nCaution: Default and weak passwords are a security risk when SSH and FTP are enabled!" \
       $DEFAULT 20 60 2
     RET=$?
   else

@@ -3335,28 +3335,28 @@ do_kernels() {
   DEFAULT=--defaultno
 
   KERNELS_UNUSED_FILE="/boot/unusedKernels"
-  KERNELS_INITRD_GREP_REGEX="^initrd\.img.+-rpi+"
-  KERNELS_INITRD_DELETE_SED="s/^initrd\.img/linux-image/"
 
-  KERNELS_UNUSED="$(ls -1 /boot | grep -v "$(uname -r)" | grep -E "$KERNELS_INITRD_GREP_REGEX" | sed "$KERNELS_INITRD_DELETE_SED")"
+  KERNELS_AVAILABLE="$(dpkg --list | grep linux-image | awk '{ print $2 }')"
+  KERNELS_USED="$(uname -a | awk '{ print "linux-image-" $3 }')"
+  KERNELS_UNUSED="$(echo "$KERNELS_AVAILABLE" | grep -v "$KERNELS_USED" | xargs -I {} echo "{}")"
 
   if [ "$INTERACTIVE" = True ]; then
 
     if [ -z "$KERNELS_UNUSED" ] && [ -e "$KERNELS_UNUSED_FILE" ]; then
       whiptail --yesno \
-        "Would you like unused kernels to be reinstalled?" $DEFAULT 20 60 2
+        "Would you like $(wc -l "$KERNELS_UNUSED_FILE") unused kernels to be reinstalled?" $DEFAULT 20 60 2
         RET=$?
         if [ $RET -eq 0 ]; then
             apt -y install $(cat $KERNELS_UNUSED_FILE)
             if [ $? -eq 0 ]; then
                 rm "$KERNELS_UNUSED_FILE"
             else
-                whiptail --msgbox "Kernel reinstallation failed." 20 60 1           
+                whiptail --msgbox "Kernel reinstallation failed." 20 60 1
             fi
         fi
     elif [ -n "$KERNELS_UNUSED" ]; then
       whiptail --yesno \
-        "Would you like unused kernels to be uninstalled?" $DEFAULT 20 60 2
+        "Would you like $(echo "$KERNELS_UNUSED" | wc -l) unused kernels to be uninstalled?" $DEFAULT 20 60 2
         RET=$?
         if [ $RET -eq 0 ]; then
             echo "$KERNELS_UNUSED" > "$KERNELS_UNUSED_FILE"

@@ -3336,7 +3336,7 @@ do_kernels() {
 
   KERNELS_UNUSED_FILE="/boot/unusedKernels"
 
-  KERNELS_AVAILABLE="$(dpkg --list | grep linux-image | awk '{ print $2 }')"
+  KERNELS_AVAILABLE="$(dpkg --list | awk '/^ii[[:space:]]+linux-image/ { print $2 }')"
   KERNELS_USED="$(uname -a | awk '{ print "linux-image-" $3 }')"
   KERNELS_UNUSED="$(echo "$KERNELS_AVAILABLE" | grep -v "$KERNELS_USED" | xargs -I {} echo "{}")"
 
@@ -3344,7 +3344,7 @@ do_kernels() {
 
     if [ -z "$KERNELS_UNUSED" ] && [ -e "$KERNELS_UNUSED_FILE" ]; then
       whiptail --yesno \
-        "Would you like $(wc -l "$KERNELS_UNUSED_FILE") unused kernels to be reinstalled?" $DEFAULT 20 60 2
+        "Would you like $(wc -l "$KERNELS_UNUSED_FILE" | cut -f 1 -d ' ') unused kernels to be reinstalled?" $DEFAULT 20 60 2
         RET=$?
         if [ $RET -eq 0 ]; then
             apt -y install $(cat $KERNELS_UNUSED_FILE)

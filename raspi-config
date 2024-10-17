@@ -3068,8 +3068,9 @@ disable_overlayfs() {
   fi
 
   # modify command line
-  sed -i $CMDLINE -e "s/\(.*\)overlayroot=tmpfs \(.*\)/\1\2/"
-
+  if ! sed -i $CMDLINE -e "s/\(.*\)overlayroot=tmpfs[^ ]* \(.*\)/\1\2/" ; then
+    echo "Unable to remove overlayroot call from cmdline.txt - cannot disable"
+  fi
   if [ "$BOOTRO" = "yes" ] ; then
     if ! mount -o remount,ro /boot${FIRMWARE} 2>/dev/null ; then
       echo "Unable to remount boot partition as read-only"

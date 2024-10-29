@@ -1877,6 +1877,70 @@ EOF
   fi
 }
 
+get_bootloader_filename() {
+   CURDATE=$(date -d "$(vcgencmd bootloader_version |  head -n 1)" +%Y%m%d)
+   FILNAME=""
+   EEBASE=$(rpi-eeprom-update | grep RELEASE | sed 's/.*(//g' | sed 's/[^\/]*)//g')
+   if grep FIRMWARE_RELEASE_STATUS /etc/default/rpi-eeprom-update | egrep -Eq "stable|latest"; then
+      EEPATH="${EEBASE}/latest/pieeprom*.bin"
+   else
+      EEPATH="${EEBASE}/default/pieeprom*.bin"
+   fi
+   for filename in $(find $EEPATH -name "pieeprom*.bin" 2>/dev/null | sort); do
+      FILDATE=$(date -d "$(echo $filename | sed 's/.*\///g' | cut -d - -f 2- | cut -d . -f 1)" +%Y%m%d)
+      if [ $FILDATE -eq $CURDATE ]; then
+         FILNAME=$filename
+         break
+      elif [ "$FILDATE" ">" "$CURDATE" ]; then
+         # If there is no exact match then try an upgrade
+         FILNAME=$filename
+      fi
+   done
+   if [ -z "$FILNAME" ]; then
+      if [ "$INTERACTIVE" = True ]; then
+         whiptail --msgbox "Current EEPROM version $(date -d $CURDATE +%Y-%m-%d) or newer not found - aborting.\n\nTry updating the rpi-eeprom APT package." 20 70 2
+      fi
+   fi
+   echo "$FILNAME"
+}
+
+do_network_install_ui() {
+  if [ "$INTERACTIVE" = True ]; then
+    BOOTOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Bootloader network install UI" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+      "B1 Always" "Always display the UI for a few seconds after power on." \
+      "B2 On demand" "Display the UI if the SHIFT key is presssed or if an error occurs." \
+      3>&1 1>&2 2>&3)
+  else
+    BOOTOPT=$1
+    true
+  fi
+
+  if [ $? -eq 0 ]; then
+    FILNAME=$(get_bootloader_filename)
+    if [ "${FILNAME}" = "none" ]; then
+       return 1
+    fi
+    EECFG=$(mktemp)
+    rpi-eeprom-config > $EECFG
+    sed $EECFG -i -e "/NET_INSTALL_AT_POWER_ON/d"
+    case "$BOOTOPT" in
+      B1*)
+         echo "NET_INSTALL_AT_POWER_ON=1" >> $EECFG
+         ;;
+      B2*)
+         # NET_INSTALL_AT_POWER_ON default value is 0
+         true
+         ;;
+      *)
+        whiptail --msgbox "Programmer error, unrecognised boot option" 20 60 2
+        return 1
+        ;;
+    esac
+    rpi-eeprom-config --apply $EECFG $FILNAME
+    ASK_TO_REBOOT=1
+  fi
+ }
+
 do_boot_order() {
   if [ "$INTERACTIVE" = True ]; then
     BOOTOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Boot Device Order" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
@@ -1889,29 +1953,9 @@ do_boot_order() {
     true
   fi
   if [ $? -eq 0 ]; then
-    CURDATE=$(date -d "$(vcgencmd bootloader_version |  head -n 1)" +%Y%m%d)
-    FILNAME="none"
-    EEBASE=$(rpi-eeprom-update | grep RELEASE | sed 's/.*(//g' | sed 's/[^\/]*)//g')
-    if grep FIRMWARE_RELEASE_STATUS /etc/default/rpi-eeprom-update | egrep -Eq "stable|latest"; then
-      EEPATH="${EEBASE}/latest/pieeprom*.bin"
-    else
-      EEPATH="${EEBASE}/default/pieeprom*.bin"
-    fi
-    for filename in $(find $EEPATH -name "pieeprom*.bin" 2>/dev/null | sort); do
-      FILDATE=$(date -d "$(echo $filename | sed 's/.*\///g' | cut -d - -f 2- | cut -d . -f 1)" +%Y%m%d)
-      if [ $FILDATE -eq $CURDATE ]; then
-        FILNAME=$filename
-        break
-      elif [ "$FILDATE" ">" "$CURDATE" ]; then
-        # If there is no exact match then try an upgrade
-        FILNAME=$filename
-      fi
-    done
-    if [ "$FILNAME" = "none" ]; then
-      if [ "$INTERACTIVE" = True ]; then
-        whiptail --msgbox "Current EEPROM version $(date -d $CURDATE +%Y-%m-%d) or newer not found - aborting.\n\nTry updating the rpi-eeprom APT package." 20 70 2
-      fi
-      return 1
+    FILNAME=$(get_bootloader_filename)
+    if [ "${FILNAME}" = "none" ]; then
+       return 1
     fi
     EECFG=$(mktemp)
     rpi-eeprom-config > $EECFG
@@ -3693,6 +3737,7 @@ do_advanced_menu() {
       "A6 Wayland" "Switch between X and Wayland backends" \
       "A7 Audio Config" "Set audio control system" \
       "A8 PCIe Speed" "Set PCIe x1 port speed" \
+      "A9 Network install UI" "Select when to display the bootloader network-install UI" \
       3>&1 1>&2 2>&3)
   elif is_pi ; then
     FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Advanced Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
@@ -3723,6 +3768,7 @@ do_advanced_menu() {
       A6\ *) do_wayland ;;
       A7\ *) do_audioconf ;;
       A8\ *) do_pci ;;
+      A9\ *) do_network_install_ui ;;
       *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
   fi

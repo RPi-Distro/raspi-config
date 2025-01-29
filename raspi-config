@@ -2063,9 +2063,10 @@ do_libliftoff() {
   fi
 }
 
+# shellcheck disable=SC2120
 do_power_off_on_halt() {
   if [ "$INTERACTIVE" = True ]; then
-    BOOTOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Configure shutdown behaviour." $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+    BOOTOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Configure shutdown behaviour." "$WT_HEIGHT" "$WT_WIDTH" "$WT_MENU_HEIGHT" \
       "B1 Full power off" "Switch off Pi power management (PMIC) outputs on Pi4 / Pi5 (recommended)." \
       "B2 VPU sleep mode" "Compatibility mode for HATs (e.g. POE HAT) and GPIO power buttons (Pi4)." \
       3>&1 1>&2 2>&3)
@@ -2074,6 +2075,7 @@ do_power_off_on_halt() {
     true
   fi
 
+  # shellcheck disable=SC2181
   if [ $? -eq 0 ]; then
     get_bootloader_filename
     if [ "${FILNAME}" = "none" ]; then
@@ -2084,17 +2086,17 @@ do_power_off_on_halt() {
        fi
     fi
     EECFG=$(mktemp)
-    rpi-eeprom-config > $EECFG
-    sed $EECFG -i -e "/POWER_OFF_ON_HALT/d"
-    sed $EECFG -i -e "/WAKE_ON_GPIO/d"
+    rpi-eeprom-config > "$EECFG"
+    sed "$EECFG" -i -e "/POWER_OFF_ON_HALT/d"
+    sed "$EECFG" -i -e "/WAKE_ON_GPIO/d"
     case "$BOOTOPT" in
       B1*)
-         echo "POWER_OFF_ON_HALT=1" >> $EECFG
-         echo "WAKE_ON_GPIO=0" >> $EECFG
+         echo "POWER_OFF_ON_HALT=1" >> "$EECFG"
+         echo "WAKE_ON_GPIO=0" >> "$EECFG"
          ;;
       B2*)
-         echo "POWER_OFF_ON_HALT=0" >> $EECFG
-         echo "WAKE_ON_GPIO=1" >> $EECFG
+         echo "POWER_OFF_ON_HALT=0" >> "$EECFG"
+         echo "WAKE_ON_GPIO=1" >> "$EECFG"
          true
          ;;
       *)
@@ -2102,7 +2104,7 @@ do_power_off_on_halt() {
         return 1
         ;;
     esac
-    rpi-eeprom-config --apply $EECFG $FILNAME
+    rpi-eeprom-config --apply "$EECFG" "$FILNAME"
     ASK_TO_REBOOT=1
   fi
  }

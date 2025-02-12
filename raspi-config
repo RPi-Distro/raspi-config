@@ -140,7 +140,7 @@ is_ssh() {
 }
 
 is_kms() {
-    return 0
+  return 0
 }
 
 is_pulseaudio() {
@@ -381,7 +381,7 @@ for line in file:lines() do
   end
 end
 if not found then
-   print(0)
+  print(0)
 end
 EOF
 }
@@ -447,7 +447,10 @@ do_overscan_kms() {
   if [ "$INTERACTIVE" = True ]; then
     NDEVS=$(xrandr -q | grep -c connected)
     if [ $NDEVS -gt 1 ] ; then
-      DEV=$(whiptail --menu "Select the output for which overscan compensation is to be set" 20 60 10 "1" "HDMI-1" "2" "HDMI-2" 3>&1 1>&2 2>&3)
+      DEV=$(whiptail --menu "Select the output for which overscan compensation is to be set" 20 60 10 \
+        "1" "HDMI-1" \
+        "2" "HDMI-2" \
+        3>&1 1>&2 2>&3)
       if [ $? -eq 1 ] ; then
         return
       fi
@@ -978,20 +981,20 @@ system instability, try a more modest overclock. Hold down
 shift during boot to temporarily disable overclock.
 See https://www.raspberrypi.org/documentation/configuration/config-txt/overclocking.md for more information.\
 " 20 70 1
-  if is_pione; then
-    OVERCLOCK=$(whiptail --menu "Choose overclock preset" 20 60 10 \
-      "None" "700MHz ARM, 250MHz core, 400MHz SDRAM, 0 overvolt" \
-      "Modest" "800MHz ARM, 250MHz core, 400MHz SDRAM, 0 overvolt" \
-      "Medium" "900MHz ARM, 250MHz core, 450MHz SDRAM, 2 overvolt" \
-      "High" "950MHz ARM, 250MHz core, 450MHz SDRAM, 6 overvolt" \
-      "Turbo" "1000MHz ARM, 500MHz core, 600MHz SDRAM, 6 overvolt" \
-      3>&1 1>&2 2>&3)
-  elif is_pitwo; then
-    OVERCLOCK=$(whiptail --menu "Choose overclock preset" 20 60 10 \
-      "None" "900MHz ARM, 250MHz core, 450MHz SDRAM, 0 overvolt" \
-      "High" "1000MHz ARM, 500MHz core, 500MHz SDRAM, 2 overvolt" \
-      3>&1 1>&2 2>&3)
-  fi
+    if is_pione; then
+      OVERCLOCK=$(whiptail --menu "Choose overclock preset" 20 60 10 \
+        "None" "700MHz ARM, 250MHz core, 400MHz SDRAM, 0 overvolt" \
+        "Modest" "800MHz ARM, 250MHz core, 400MHz SDRAM, 0 overvolt" \
+        "Medium" "900MHz ARM, 250MHz core, 450MHz SDRAM, 2 overvolt" \
+        "High" "950MHz ARM, 250MHz core, 450MHz SDRAM, 6 overvolt" \
+        "Turbo" "1000MHz ARM, 500MHz core, 600MHz SDRAM, 6 overvolt" \
+        3>&1 1>&2 2>&3)
+    elif is_pitwo; then
+      OVERCLOCK=$(whiptail --menu "Choose overclock preset" 20 60 10 \
+        "None" "900MHz ARM, 250MHz core, 450MHz SDRAM, 0 overvolt" \
+        "High" "1000MHz ARM, 500MHz core, 500MHz SDRAM, 2 overvolt" \
+        3>&1 1>&2 2>&3)
+    fi
   else
     OVERCLOCK=$1
     true
@@ -1939,32 +1942,32 @@ EOF
 }
 
 get_bootloader_filename() {
-   CURDATE=$(date -d "$(vcgencmd bootloader_version |  head -n 1)" +%Y%m%d)
-   FILNAME=""
-   EEBASE=$(rpi-eeprom-update | grep RELEASE | sed 's/.*(//g' | sed 's/[^\/]*)//g')
-   if grep FIRMWARE_RELEASE_STATUS /etc/default/rpi-eeprom-update | egrep -Eq "stable|latest"; then
-      EEPATH="${EEBASE}/latest/pieeprom*.bin"
-   else
-      EEPATH="${EEBASE}/default/pieeprom*.bin"
-   fi
-   EXACT_MATCH=0
-   for filename in $(find $EEPATH -name "pieeprom*.bin" 2>/dev/null | sort); do
-      FILDATE=$(date -d "$(echo $filename | sed 's/.*\///g' | cut -d - -f 2- | cut -d . -f 1)" +%Y%m%d)
-      FILNAME=$filename
-      if [ $FILDATE -eq $CURDATE ]; then
-         EXACT_MATCH=1
-         break
+  CURDATE=$(date -d "$(vcgencmd bootloader_version |  head -n 1)" +%Y%m%d)
+  FILNAME=""
+  EEBASE=$(rpi-eeprom-update | grep RELEASE | sed 's/.*(//g' | sed 's/[^\/]*)//g')
+  if grep FIRMWARE_RELEASE_STATUS /etc/default/rpi-eeprom-update | egrep -Eq "stable|latest"; then
+    EEPATH="${EEBASE}/latest/pieeprom*.bin"
+  else
+    EEPATH="${EEBASE}/default/pieeprom*.bin"
+  fi
+  EXACT_MATCH=0
+  for filename in $(find $EEPATH -name "pieeprom*.bin" 2>/dev/null | sort); do
+    FILDATE=$(date -d "$(echo $filename | sed 's/.*\///g' | cut -d - -f 2- | cut -d . -f 1)" +%Y%m%d)
+    FILNAME=$filename
+    if [ $FILDATE -eq $CURDATE ]; then
+      EXACT_MATCH=1
+      break
+    fi
+  done
+  if [ $EXACT_MATCH != 1 ]; then
+    if [ "$INTERACTIVE" = True ]; then
+      whiptail --yesno "Current EEPROM version $(date -d $CURDATE +%Y-%m-%d) or newer not found.\n\nTry updating the rpi-eeprom APT package.\n\nInstall latest local $(basename $FILNAME) anyway?" 20 70 3
+      DEFAULTS=$?
+      if [ "$DEFAULTS" -ne 0 ]; then
+        FILNAME="none" # no
       fi
-   done
-   if [ $EXACT_MATCH != 1 ]; then
-      if [ "$INTERACTIVE" = True ]; then
-         whiptail --yesno "Current EEPROM version $(date -d $CURDATE +%Y-%m-%d) or newer not found.\n\nTry updating the rpi-eeprom APT package.\n\nInstall latest local $(basename $FILNAME) anyway?" 20 70 3
-         DEFAULTS=$?
-         if [ "$DEFAULTS" -ne 0 ]; then
-            FILNAME="none" # no
-         fi
-      fi
-   fi
+    fi
+  fi
 }
 
 do_network_install_ui() {
@@ -1981,23 +1984,23 @@ do_network_install_ui() {
   if [ $? -eq 0 ]; then
     get_bootloader_filename
     if [ "${FILNAME}" = "none" ]; then
-       if [ "$INTERACTIVE" = True ]; then
-          return 0
-       else
-          return 1
-       fi
+      if [ "$INTERACTIVE" = True ]; then
+        return 0
+      else
+        return 1
+      fi
     fi
     EECFG=$(mktemp)
     rpi-eeprom-config > $EECFG
     sed $EECFG -i -e "/NET_INSTALL_AT_POWER_ON/d"
     case "$BOOTOPT" in
       B1*)
-         echo "NET_INSTALL_AT_POWER_ON=1" >> $EECFG
-         ;;
+        echo "NET_INSTALL_AT_POWER_ON=1" >> $EECFG
+        ;;
       B2*)
-         # NET_INSTALL_AT_POWER_ON default value is 0
-         true
-         ;;
+        # NET_INSTALL_AT_POWER_ON default value is 0
+        true
+        ;;
       *)
         whiptail --msgbox "Programmer error, unrecognised boot option" 20 60 2
         return 1
@@ -2006,14 +2009,14 @@ do_network_install_ui() {
     rpi-eeprom-config --apply $EECFG $FILNAME
     ASK_TO_REBOOT=1
   fi
- }
+}
 
 do_libliftoff() {
   if [ "$INTERACTIVE" = True ]; then
     RET=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "libliftoff Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
-        "L1 Disable" "Disable libliftoff hardware overlays" \
-        "L2 Enable" "Enable libliftoff hardware overlays (experimental)" \
-        3>&1 1>&2 2>&3)
+      "L1 Disable" "Disable libliftoff hardware overlays" \
+      "L2 Enable" "Enable libliftoff hardware overlays (experimental)" \
+      3>&1 1>&2 2>&3)
   else
     RET=$1
     true
@@ -2082,11 +2085,11 @@ do_power_off_on_halt() {
   if [ $? -eq 0 ]; then
     get_bootloader_filename
     if [ "${FILNAME}" = "none" ]; then
-       if [ "$INTERACTIVE" = True ]; then
-          return 0
-       else
-          return 1
-       fi
+      if [ "$INTERACTIVE" = True ]; then
+        return 0
+      else
+        return 1
+      fi
     fi
     EECFG=$(mktemp)
     rpi-eeprom-config > "$EECFG"
@@ -2094,14 +2097,14 @@ do_power_off_on_halt() {
     sed "$EECFG" -i -e "/WAKE_ON_GPIO/d"
     case "$BOOTOPT" in
       B1*)
-         echo "POWER_OFF_ON_HALT=1" >> "$EECFG"
-         echo "WAKE_ON_GPIO=0" >> "$EECFG"
-         ;;
+        echo "POWER_OFF_ON_HALT=1" >> "$EECFG"
+        echo "WAKE_ON_GPIO=0" >> "$EECFG"
+        ;;
       B2*)
-         echo "POWER_OFF_ON_HALT=0" >> "$EECFG"
-         echo "WAKE_ON_GPIO=1" >> "$EECFG"
-         true
-         ;;
+        echo "POWER_OFF_ON_HALT=0" >> "$EECFG"
+        echo "WAKE_ON_GPIO=1" >> "$EECFG"
+        true
+        ;;
       *)
         whiptail --msgbox "Programmer error, unrecognised boot option" 20 60 2
         return 1
@@ -2110,7 +2113,7 @@ do_power_off_on_halt() {
     rpi-eeprom-config --apply "$EECFG" "$FILNAME"
     ASK_TO_REBOOT=1
   fi
- }
+}
 
 do_boot_order() {
   if [ "$INTERACTIVE" = True ]; then
@@ -2131,9 +2134,9 @@ do_boot_order() {
     case "$BOOTOPT" in
       B1*)
         if is_pifive; then
-           ORD=0xf461
+          ORD=0xf461
         else
-           ORD=0xf41
+          ORD=0xf41
         fi
         if ! grep -q "BOOT_ORDER" $EECFG ; then
           sed $EECFG -i -e "\$a[all]\nBOOT_ORDER=${ORD}"
@@ -2144,9 +2147,9 @@ do_boot_order() {
         ;;
       B2*)
         if is_pifive; then
-           ORD=0xf146
+          ORD=0xf146
         else
-           ORD=0xf14
+          ORD=0xf14
         fi
         if ! grep -q "BOOT_ORDER" $EECFG ; then
           sed $EECFG -i -e "\$a[all]\nBOOT_ORDER=${ORD}"
@@ -2170,11 +2173,11 @@ do_boot_order() {
     esac
     get_bootloader_filename
     if [ "${FILNAME}" = "none" ]; then
-       if [ "$INTERACTIVE" = True ]; then
-          return 0
-       else
-          return 1
-       fi
+      if [ "$INTERACTIVE" = True ]; then
+        return 0
+      else
+        return 1
+      fi
     fi
     rpi-eeprom-config --apply $EECFG $FILNAME
     ASK_TO_REBOOT=1
@@ -2219,15 +2222,15 @@ do_boot_rom() {
     if [ "$DEFAULTS" -eq 0 ]; then # yes
       get_bootloader_filename
       if [ "${FILNAME}" = "none" ]; then
-         if [ "$INTERACTIVE" = True ]; then
-            return 0
-         else
-            return 1
-         fi
+        if [ "$INTERACTIVE" = True ]; then
+          return 0
+        else
+          return 1
+        fi
       fi
       rpi-eeprom-update -d -f $FILNAME
       if [ "$INTERACTIVE" = True ]; then
-         whiptail --msgbox "Bootloader reset to default configuration" 20 60 2
+        whiptail --msgbox "Bootloader reset to default configuration" 20 60 2
       fi
     else
       if [ "$INTERACTIVE" = True ]; then
@@ -2650,15 +2653,15 @@ do_wayland() {
   if [ "$INTERACTIVE" = True ]; then
     if [ -f /usr/bin/labwc ]; then
       RET=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Wayland Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
-          "W1 X11" "Openbox window manager with X11 backend" \
-          "W2 Wayfire" "Wayfire window manager with Wayland backend" \
-          "W3 Labwc" "Labwc window manager with Wayland backend" \
-          3>&1 1>&2 2>&3)
+        "W1 X11" "Openbox window manager with X11 backend" \
+        "W2 Wayfire" "Wayfire window manager with Wayland backend" \
+        "W3 Labwc" "Labwc window manager with Wayland backend" \
+        3>&1 1>&2 2>&3)
     else
       RET=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Wayland Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
-          "W1 X11" "Openbox window manager with X11 backend" \
-          "W2 Wayfire" "Wayfire window manager with Wayland backend" \
-          3>&1 1>&2 2>&3)
+        "W1 X11" "Openbox window manager with X11 backend" \
+        "W2 Wayfire" "Wayfire window manager with Wayland backend" \
+        3>&1 1>&2 2>&3)
     fi
   else
     RET=$1
@@ -3017,7 +3020,15 @@ do_vnc_resolution() {
       CUR=640x480
     fi
     FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --default-item $CUR --menu "Set VNC Resolution" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-      "640x480" "" "720x480" "" "800x600" "" "1024x768" "" "1280x720" "" "1280x1024" "" "1600x1200" "" "1920x1080" "" 3>&1 1>&2 2>&3)
+      "640x480" "" \
+      "720x480" "" \
+      "800x600" "" \
+      "1024x768" "" \
+      "1280x720" "" \
+      "1280x1024" "" \
+      "1600x1200" "" \
+      "1920x1080" "" \
+      3>&1 1>&2 2>&3)
     RET=$?
   else
     FUN=$1
@@ -3091,9 +3102,9 @@ do_wifi_ssid_passphrase() {
     fi
   elif ! systemctl -q is-active NetworkManager; then
     if [ "$INTERACTIVE" = True ]; then
-        whiptail --msgbox "No supported network connection manager found" 20 60
-      fi
-      return 1
+      whiptail --msgbox "No supported network connection manager found" 20 60
+    fi
+    return 1
   fi
 
   SSID="$1"
@@ -3116,8 +3127,8 @@ do_wifi_ssid_passphrase() {
 
   # Escape special characters for embedding in regex below
   ssid="$(echo "$SSID" \
-   | sed 's;\\;\\\\;g' \
-   | sed -e 's;\.;\\\.;g' \
+   | sed -e 's;\\;\\\\;g' \
+         -e 's;\.;\\\.;g' \
          -e 's;\*;\\\*;g' \
          -e 's;\+;\\\+;g' \
          -e 's;\?;\\\?;g' \
@@ -3893,20 +3904,20 @@ do_interface_menu() {
 do_performance_menu() {
   case "$(get_pi_type)" in
     [03]) FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Performance Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-          "P2 Overlay File System" "Enable/disable read-only file system" \
-          3>&1 1>&2 2>&3) ;;
+      "P2 Overlay File System" "Enable/disable read-only file system" \
+      3>&1 1>&2 2>&3) ;;
     [12]) FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Performance Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-          "P1 Overclock" "Configure CPU overclocking" \
-          "P2 Overlay File System" "Enable/disable read-only file system" \
-          3>&1 1>&2 2>&3) ;;
+      "P1 Overclock" "Configure CPU overclocking" \
+      "P2 Overlay File System" "Enable/disable read-only file system" \
+      3>&1 1>&2 2>&3) ;;
     4) FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Performance Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-          "P2 Overlay File System" "Enable/disable read-only file system" \
-          "P3 Fan" "Set behaviour of GPIO case fan" \
-          3>&1 1>&2 2>&3) ;;
+      "P2 Overlay File System" "Enable/disable read-only file system" \
+      "P3 Fan" "Set behaviour of GPIO case fan" \
+      3>&1 1>&2 2>&3) ;;
     *) FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Performance Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-          "P2 Overlay File System" "Enable/disable read-only file system" \
-          "P4 USB Current" "Set USB current limit" \
-          3>&1 1>&2 2>&3) ;;
+      "P2 Overlay File System" "Enable/disable read-only file system" \
+      "P4 USB Current" "Set USB current limit" \
+      3>&1 1>&2 2>&3) ;;
   esac
   RET=$?
   if [ $RET -eq 1 ]; then

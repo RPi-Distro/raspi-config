@@ -320,6 +320,14 @@ wt_yesno_wide() {
   wt_yesno "$1" "$2" $WT_BOX_WIDTH_WIDE
 }
 
+wt_inputbox() {
+  whiptail --inputbox "$1" $WT_BOX_HEIGHT $WT_BOX_WIDTH "$2" 3>&1 1>&2 2>&3
+}
+
+wt_passwordbox() {
+  whiptail --passwordbox "$1" $WT_BOX_HEIGHT $WT_BOX_WIDTH 3>&1 1>&2 2>&3
+}
+
 do_about() {
   wt_msgbox_wide "\
 This tool provides a straightforward way of doing initial
@@ -1038,7 +1046,7 @@ No other symbols, punctuation characters, or blank spaces are permitted.\
   fi
   CURRENT_HOSTNAME=$(get_hostname)
   if [ "$INTERACTIVE" = True ]; then
-    NEW_HOSTNAME=$(whiptail --inputbox "Please enter a hostname" 20 60 "$CURRENT_HOSTNAME" 3>&1 1>&2 2>&3)
+    NEW_HOSTNAME=$(wt_inputbox "Please enter a hostname" "$CURRENT_HOSTNAME")
   else
     NEW_HOSTNAME="$1"
     true
@@ -1824,7 +1832,7 @@ do_fan() {
   fi
   if [ $RET -eq 0 ] ; then
     if [ "$INTERACTIVE" = True ]; then
-      GPIO=$(whiptail --inputbox "To which GPIO is the fan connected?" 20 60 "$GNOW" 3>&1 1>&2 2>&3)
+      GPIO=$(wt_inputbox "To which GPIO is the fan connected?" "$GNOW")
     else
       if [ -z $2 ]; then
         GPIO=14
@@ -1848,7 +1856,7 @@ do_fan() {
       return 1
     fi
     if [ "$INTERACTIVE" = True ]; then
-      TIN=$(whiptail --inputbox "At what temperature in degrees Celsius should the fan turn on?" 20 60 "$TNOW" 3>&1 1>&2 2>&3)
+      TIN=$(wt_inputbox "At what temperature in degrees Celsius should the fan turn on?" "$TNOW")
     else
       if [ -z $3 ]; then
         TIN=80
@@ -3189,7 +3197,7 @@ do_wifi_ssid_passphrase() {
 
   SSID="$1"
   while [ -z "$SSID" ] && [ "$INTERACTIVE" = True ]; do
-    if ! SSID=$(whiptail --inputbox "Please enter SSID" 20 60 3>&1 1>&2 2>&3); then
+    if ! SSID=$(wt_inputbox "Please enter SSID"); then
       return 0
     elif [ -z "$SSID" ]; then
       wt_msgbox "SSID cannot be empty. Please try again."
@@ -3198,7 +3206,7 @@ do_wifi_ssid_passphrase() {
 
   PASSPHRASE="$2"
   while [ "$INTERACTIVE" = True ]; do
-    if ! PASSPHRASE=$(whiptail --passwordbox "Please enter passphrase. Leave it empty if none." 20 60 3>&1 1>&2 2>&3); then
+    if ! PASSPHRASE=$(wt_passwordbox "Please enter passphrase. Leave it empty if none."); then
       return 0
     else
       break
@@ -3572,7 +3580,7 @@ do_proxy() {
     else
       STRING="Please enter proxy address.\\nEg: http://user:pass@proxy:8080"
     fi
-    if ! ADDRESS="$(whiptail --inputbox "$STRING"  20 60 "$CURRENT" 3>&1 1>&2 2>&3)"; then
+    if ! ADDRESS="$(wt_inputbox "$STRING" "$CURRENT")"; then
       return 0
     fi
   fi
@@ -4133,7 +4141,7 @@ if [ "$INTERACTIVE" = True ]; then
   [ -e $CONFIG ] || touch $CONFIG
   calc_wt_size
   while [ "$USER" = "root" ] || [ -z "$USER" ]; do
-    if ! USER=$(whiptail --inputbox "raspi-config could not determine the default user.\\n\\nWhat user should these settings apply to?" 20 60 pi 3>&1 1>&2 2>&3); then
+    if ! USER=$(wt_inputbox "raspi-config could not determine the default user.\\n\\nWhat user should these settings apply to?" "pi"); then
       return 0
     fi
   done

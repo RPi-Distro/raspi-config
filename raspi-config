@@ -1090,19 +1090,18 @@ shift during boot to temporarily disable overclock.
 See https://www.raspberrypi.org/documentation/configuration/config-txt/overclocking.md for more information.\
 "
     if is_pione; then
-      OVERCLOCK=$(wt_menu "Choose overclock preset" \
+      set -- \
         "None" "700MHz ARM, 250MHz core, 400MHz SDRAM, 0 overvolt" \
         "Modest" "800MHz ARM, 250MHz core, 400MHz SDRAM, 0 overvolt" \
         "Medium" "900MHz ARM, 250MHz core, 450MHz SDRAM, 2 overvolt" \
         "High" "950MHz ARM, 250MHz core, 450MHz SDRAM, 6 overvolt" \
-        "Turbo" "1000MHz ARM, 500MHz core, 600MHz SDRAM, 6 overvolt" \
-        )
+        "Turbo" "1000MHz ARM, 500MHz core, 600MHz SDRAM, 6 overvolt"
     elif is_pitwo; then
-      OVERCLOCK=$(wt_menu "Choose overclock preset" \
+      set -- \
         "None" "900MHz ARM, 250MHz core, 450MHz SDRAM, 0 overvolt" \
-        "High" "1000MHz ARM, 500MHz core, 500MHz SDRAM, 2 overvolt" \
-        )
+        "High" "1000MHz ARM, 500MHz core, 500MHz SDRAM, 2 overvolt"
     fi
+    OVERCLOCK=$(wt_menu "Choose overclock preset" "$@")
   else
     OVERCLOCK=$1
     true
@@ -2753,18 +2752,14 @@ do_glamor() {
 
 do_wayland() {
   if [ "$INTERACTIVE" = True ]; then
+    set -- \
+      "W1 X11" "Openbox window manager with X11 backend" \
+      "W2 Wayfire" "Wayfire window manager with Wayland backend"
     if [ -f /usr/bin/labwc ]; then
-      RET=$(wt_menu "Wayland Options" \
-        "W1 X11" "Openbox window manager with X11 backend" \
-        "W2 Wayfire" "Wayfire window manager with Wayland backend" \
-        "W3 Labwc" "Labwc window manager with Wayland backend" \
-        )
-    else
-      RET=$(wt_menu "Wayland Options" \
-        "W1 X11" "Openbox window manager with X11 backend" \
-        "W2 Wayfire" "Wayfire window manager with Wayland backend" \
-        )
+      set -- "$@" \
+        "W3 Labwc" "Labwc window manager with Wayland backend"
     fi
+    RET=$(wt_menu "Wayland Options" "$@")
   else
     RET=$1
     true
@@ -2835,14 +2830,17 @@ do_audioconf() {
       wt_msgbox "No audio systems installed"
       RET=1
     else
+      set --
       if is_installed pulseaudio ; then
-        OPTIONS="1 PulseAudio"
+        set -- "$@" \
+          "1" "PulseAudio"
       fi
       if is_installed pipewire-pulse ; then
-        OPTIONS="$OPTIONS 2 Pipewire"
+        set -- "$@" \
+          "2" "Pipewire"
       fi
       #shellcheck disable=2086
-      PPOPT=$(wt_menu "Select the audio configuration to use" $OPTIONS --default-item $DEFAULT)
+      PPOPT=$(wt_menu "Select the audio configuration to use" "$@" --default-item $DEFAULT)
       RET="$?"
     fi
   else
@@ -3859,34 +3857,30 @@ if [ -n "${OPT_MEMORY_SPLIT:-}" ]; then
 fi
 
 do_system_menu() {
+  set -- \
+    "S1 Wireless LAN" "Enter SSID and passphrase"
   if is_pi ; then
-    FUN=$(wt_sub_menu "System Options" \
-      "S1 Wireless LAN" "Enter SSID and passphrase" \
-      "S2 Audio" "Select audio out through HDMI or 3.5mm jack" \
-      "S3 Password" "Change password for the '$USER' user" \
-      "S4 Hostname" "Set name for this computer on a network" \
-      "S5 Boot / Auto Login" "Select boot into desktop or to command line" \
-      "S6 Splash Screen" "Choose graphical splash screen or text boot" \
-      "S7 Power LED" "Set behaviour of power LED" \
-      "S8 Browser" "Choose default web browser" \
-      "S9 Logging" "Set storage location for logs" \
-      )
-  elif is_live ; then
-    FUN=$(wt_sub_menu "System Options" \
-      "S1 Wireless LAN" "Enter SSID and passphrase" \
-      "S3 Password" "Change password for the '$USER' user" \
-      "S4 Hostname" "Set name for this computer on a network" \
-      "S5 Boot / Auto Login" "Select boot into desktop or to command line" \
-      )
-  else
-    FUN=$(wt_sub_menu "System Options" \
-      "S1 Wireless LAN" "Enter SSID and passphrase" \
-      "S3 Password" "Change password for the '$USER' user" \
-      "S4 Hostname" "Set name for this computer on a network" \
-      "S5 Boot / Auto Login" "Select boot into desktop or to command line" \
-      "S6 Splash Screen" "Choose graphical splash screen or text boot" \
-      )
+    set -- "$@" \
+      "S2 Audio" "Select audio out through HDMI or 3.5mm jack"
   fi
+  set -- "$@" \
+    "S3 Password" "Change password for the '$USER' user" \
+    "S4 Hostname" "Set name for this computer on a network" \
+    "S5 Boot / Auto Login" "Select boot into desktop or to command line"
+  if ! is_live ; then
+    set -- "$@" \
+      "S6 Splash Screen" "Choose graphical splash screen or text boot"
+  fi
+  if is_pi ; then
+    if [ $(get_leds) -ne -1 ]; then
+      set -- "$@" \
+        "S7 Power LED" "Set behaviour of power LED"
+    fi
+    set -- "$@" \
+      "S8 Browser" "Choose default web browser" \
+      "S9 Logging" "Set storage location for logs"
+  fi
+  FUN=$(wt_sub_menu "System Options" "$@")
   RET=$?
   if [ $RET -eq 1 ]; then
     return 0
@@ -3907,48 +3901,27 @@ do_system_menu() {
 }
 
 do_display_menu() {
-  if is_pi ; then
-    if is_wayland; then
-      if is_pifour; then
-        FUN=$(wt_sub_menu "Display Options" \
-          "D2 Screen Blanking" "Enable/disable screen blanking" \
-          "D4 Composite" "Enable/disable composite output" \
-          "D5 4Kp60 HDMI" "Enable 4Kp60 resolution on HDMI0" \
-          "D6 Onscreen Keyboard" "Enable on-screen keyboard" \
-          "D7 Keyboard Output" "Select monitor used for on-screen keyboard" \
-          )
-      else
-        FUN=$(wt_sub_menu "Display Options" \
-          "D2 Screen Blanking" "Enable/disable screen blanking" \
-          "D4 Composite" "Enable/disable composite output" \
-          "D6 Onscreen Keyboard" "Enable on-screen keyboard" \
-          "D7 Keyboard Output" "Select monitor used for on-screen keyboard" \
-          )
-      fi
-    else
-      if is_pifour; then
-        FUN=$(wt_sub_menu "Display Options" \
-          "D1 Underscan" "Remove black border around screen" \
-          "D2 Screen Blanking" "Enable/disable screen blanking" \
-          "D3 VNC Resolution" "Set resolution for headless use" \
-          "D4 Composite" "Enable/disable composite output" \
-          "D5 4Kp60 HDMI" "Enable 4Kp60 resolution on HDMI0" \
-          )
-      else
-        FUN=$(wt_sub_menu "Display Options" \
-          "D1 Underscan" "Remove black border around screen" \
-          "D2 Screen Blanking" "Enable/disable screen blanking" \
-          "D3 VNC Resolution" "Set resolution for headless use" \
-          "D4 Composite" "Enable/disable composite output" \
-          )
-      fi
-    fi
-  else
-    FUN=$(wt_sub_menu "Display Options" \
-      "D1 Underscan" "Remove black border around screen" \
-      "D2 Screen Blanking" "Enable/disable screen blanking" \
-      )
+  set --
+  if ! is_pi || ! is_wayland ; then
+    set -- "$@" \
+      "D1 Underscan" "Remove black border around screen"
   fi
+  set -- "$@" \
+    "D2 Screen Blanking" "Enable/disable screen blanking"
+  if is_pi ; then
+    set -- "$@" \
+      "D4 Composite" "Enable/disable composite output"
+    if is_pifour; then
+      set -- "$@" \
+        "D5 4Kp60 HDMI" "Enable 4Kp60 resolution on HDMI0"
+    fi
+    if is_wayland; then
+      set -- "$@" \
+        "D6 Onscreen Keyboard" "Enable on-screen keyboard" \
+        "D7 Keyboard Output" "Select monitor used for on-screen keyboard"
+    fi
+  fi
+  FUN=$(wt_sub_menu "Display Options" "$@")
   RET=$?
   if [ $RET -eq 1 ]; then
     return 0
@@ -3967,22 +3940,19 @@ do_display_menu() {
 }
 
 do_interface_menu() {
+  set -- \
+    "I1 SSH" "Enable/disable remote command line access using SSH"
   if is_pi ; then
-    FUN=$(wt_sub_menu "Interfacing Options" \
-      "I1 SSH" "Enable/disable remote command line access using SSH" \
+    set -- "$@" \
       "I2 RPi Connect" "Enable/disable Raspberry Pi Connect" \
       "I3 VNC" "Enable/disable graphical remote desktop access" \
       "I4 SPI" "Enable/disable automatic loading of SPI kernel module" \
       "I5 I2C" "Enable/disable automatic loading of I2C kernel module" \
       "I6 Serial Port" "Enable/disable shell messages on the serial connection" \
       "I7 1-Wire" "Enable/disable one-wire interface" \
-      "I8 Remote GPIO" "Enable/disable remote access to GPIO pins" \
-      )
-  else
-    FUN=$(wt_sub_menu "Interfacing Options" \
-      "I1 SSH" "Enable/disable remote command line access using SSH" \
-      )
+      "I8 Remote GPIO" "Enable/disable remote access to GPIO pins"
   fi
+  FUN=$(wt_sub_menu "Interfacing Options" "$@")
   RET=$?
   if [ $RET -eq 1 ]; then
     return 0
@@ -4002,23 +3972,22 @@ do_interface_menu() {
 }
 
 do_performance_menu() {
-  case "$(get_pi_type)" in
-    [03]) FUN=$(wt_sub_menu "Performance Options" \
-      "P2 Overlay File System" "Enable/disable read-only file system" \
-      ) ;;
-    [12]) FUN=$(wt_sub_menu "Performance Options" \
-      "P1 Overclock" "Configure CPU overclocking" \
-      "P2 Overlay File System" "Enable/disable read-only file system" \
-      ) ;;
-    4) FUN=$(wt_sub_menu "Performance Options" \
-      "P2 Overlay File System" "Enable/disable read-only file system" \
-      "P3 Fan" "Set behaviour of GPIO case fan" \
-      ) ;;
-    *) FUN=$(wt_sub_menu "Performance Options" \
-      "P2 Overlay File System" "Enable/disable read-only file system" \
-      "P4 USB Current" "Set USB current limit" \
-      ) ;;
-  esac
+  set --
+  if is_pione || is_pitwo ; then
+    set -- "$@" \
+      "P1 Overclock" "Configure CPU overclocking"
+  fi
+  set -- "$@" \
+    "P2 Overlay File System" "Enable/disable read-only file system"
+  if is_pifour ; then
+    set -- "$@" \
+      "P3 Fan" "Set behaviour of GPIO case fan"
+  fi
+  if is_pifive ; then
+    set -- "$@" \
+      "P4 USB Current" "Set USB current limit"
+  fi
+  FUN=$(wt_sub_menu "Performance Options" "$@")
   RET=$?
   if [ $RET -eq 1 ]; then
     return 0
@@ -4055,51 +4024,37 @@ do_internationalisation_menu() {
 }
 
 do_advanced_menu() {
-  if is_pifour ; then
-    FUN=$(wt_sub_menu "Advanced Options" \
-      "A1 Expand Filesystem" "Ensures that all of the SD card is available" \
-      "A2 Network Interface Names" "Enable/disable predictable network i/f names" \
-      "A3 Network Proxy Settings" "Configure network proxy settings" \
-      "A4 Boot Order" "Choose boot device priority (SD/net/USB/NVMe)" \
-      "A5 Bootloader Version" "Select bootloader (latest/factory default)" \
-      "A6 Wayland" "Switch between X and Wayland backends" \
-      "A7 Audio Config" "Set audio control system" \
-      "A9 Network Install UI" "Select display of bootloader network install UI" \
-      "A10 Libliftoff" "Enable/disable libliftoff hardware overlays" \
-      "A11 Shutdown Behaviour" "Configure shutdown behavior" \
-      )
-  elif is_pifive ; then
-    FUN=$(wt_sub_menu "Advanced Options" \
-      "A1 Expand Filesystem" "Ensures that all of the SD card is available" \
-      "A2 Network Interface Names" "Enable/disable predictable network i/f names" \
-      "A3 Network Proxy Settings" "Configure network proxy settings" \
-      "A4 Boot Order" "Choose boot device priority (SD/net/USB/NVMe)" \
-      "A5 Bootloader Version" "Select bootloader (latest/factory default)" \
-      "A6 Wayland" "Switch between X and Wayland backends" \
-      "A7 Audio Config" "Set audio control system" \
-      "A8 PCIe Speed" "Set PCIe x1 port speed" \
-      "A9 Network Install UI" "Select display of bootloader network install UI" \
-      "A10 Libliftoff" "Enable/disable libliftoff hardware overlays" \
-      "A11 Shutdown Behaviour" "Configure shutdown behavior" \
-      )
-  elif is_pi ; then
-    FUN=$(wt_sub_menu "Advanced Options" \
-      "A1 Expand Filesystem" "Ensures that all of the SD card is available" \
-      "A2 Network Interface Names" "Enable/disable predictable network i/f names" \
-      "A3 Network Proxy Settings" "Configure network proxy settings" \
-      "A6 Wayland" "Switch between X and Wayland backends" \
-      "A7 Audio Config" "Set audio control system" \
-      "A10 Libliftoff" "Enable/disable libliftoff hardware overlays" \
-      )
-  else
-    FUN=$(wt_sub_menu "Advanced Options" \
-      "A2 Network Interface Names" "Enable/disable predictable network i/f names" \
-      "A3 Network Proxy Settings" "Configure network proxy settings" \
-      "A6 Wayland" "Switch between X and Wayland backends" \
-      "A7 Audio Config" "Set audio control system" \
-      "A10 Libliftoff" "Enable/disable libliftoff hardware overlays" \
-      )
+  set --
+  if is_pi ; then
+    set -- "$@" \
+      "A1 Expand Filesystem" "Ensures that all of the SD card is available"
   fi
+  set -- "$@" \
+    "A2 Network Interface Names" "Enable/disable predictable network i/f names" \
+    "A3 Network Proxy Settings" "Configure network proxy settings"
+  if gpu_has_mmu ; then
+    set -- "$@" \
+    "A4 Boot Order" "Choose boot device priority (SD/net/USB/NVMe)" \
+    "A5 Bootloader Version" "Select bootloader (latest/factory default)"
+  fi
+  set -- "$@" \
+    "A6 Wayland" "Switch between X and Wayland backends" \
+    "A7 Audio Config" "Set audio control system"
+  if is_pifive ; then
+    set -- "$@" \
+      "A8 PCIe Speed" "Set PCIe x1 port speed"
+  fi
+  if gpu_has_mmu ; then
+    set -- "$@" \
+      "A9 Network Install UI" "Select display of bootloader network install UI"
+  fi
+  set -- "$@" \
+    "A10 Libliftoff" "Enable/disable libliftoff hardware overlays"
+  if gpu_has_mmu ; then
+    set -- "$@" \
+      "A11 Shutdown Behaviour" "Configure shutdown behavior"
+  fi
+  FUN=$(wt_sub_menu "Advanced Options" "$@")
   RET=$?
   if [ $RET -eq 1 ]; then
     return 0
@@ -4158,6 +4113,19 @@ if [ "$INTERACTIVE" = True ]; then
     fi
   done
   while true; do
+    set -- \
+      "1 System Options" "Configure system settings" \
+      "2 Display Options" "Configure display settings" \
+      "3 Interface Options" "Configure connections to peripherals"
+    if is_pi ; then
+      set -- "$@" \
+        "4 Performance Options" "Configure performance settings"
+    fi
+    set -- "$@" \
+      "5 Localisation Options" "Configure language and regional settings" \
+      "6 Advanced Options" "Configure advanced settings" \
+      "8 Update" "Update this tool to the latest version" \
+      "9 About raspi-config" "Information about this configuration tool"
     if is_pi ; then
       if [ -z "$MENU_BACKTITLE" ]; then
         MEMSIZE=$(vcgencmd get_config total_mem|cut -d= -f2)
@@ -4168,28 +4136,10 @@ if [ "$INTERACTIVE" = True ]; then
         fi
         MENU_BACKTITLE="$(cat /proc/device-tree/model), ${FMEMSIZE}"
       fi
-      FUN=$(wt_top_menu "Setup Options" \
-        "1 System Options" "Configure system settings" \
-        "2 Display Options" "Configure display settings" \
-        "3 Interface Options" "Configure connections to peripherals" \
-        "4 Performance Options" "Configure performance settings" \
-        "5 Localisation Options" "Configure language and regional settings" \
-        "6 Advanced Options" "Configure advanced settings" \
-        "8 Update" "Update this tool to the latest version" \
-        "9 About raspi-config" "Information about this configuration tool" \
-        --backtitle "$MENU_BACKTITLE" \
-        )
-    else
-      FUN=$(wt_top_menu "Setup Options" \
-        "1 System Options" "Configure system settings" \
-        "2 Display Options" "Configure display settings" \
-        "3 Interface Options" "Configure connections to peripherals" \
-        "5 Localisation Options" "Configure language and regional settings" \
-        "6 Advanced Options" "Configure advanced settings" \
-        "8 Update" "Update this tool to the latest version" \
-        "9 About raspi-config" "Information about this configuration tool" \
-        )
+      set -- "$@" \
+        --backtitle "$MENU_BACKTITLE"
     fi
+    FUN=$(wt_top_menu "Setup Options" "$@")
     RET=$?
     if [ $RET -eq 1 ]; then
       do_finish

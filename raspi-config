@@ -328,6 +328,20 @@ wt_passwordbox() {
   whiptail --passwordbox "$1" $WT_BOX_HEIGHT $WT_BOX_WIDTH 3>&1 1>&2 2>&3
 }
 
+wt_menu() {
+  MENU_TITLE="$1"
+  shift
+  whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "$MENU_TITLE" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT "$@" 3>&1 1>&2 2>&3
+}
+
+wt_sub_menu() {
+  wt_menu "$@" --cancel-button Back --ok-button Select
+}
+
+wt_top_menu() {
+  wt_menu "$@" --cancel-button Finish --ok-button Select
+}
+
 do_about() {
   wt_msgbox_wide "\
 This tool provides a straightforward way of doing initial
@@ -551,10 +565,10 @@ do_overscan_kms() {
   if [ "$INTERACTIVE" = True ]; then
     NDEVS=$(xrandr -q | grep -c connected)
     if [ $NDEVS -gt 1 ] ; then
-      DEV=$(whiptail --menu "Select the output for which overscan compensation is to be set" 20 60 10 \
+      DEV=$(wt_menu "Select the output for which overscan compensation is to be set" \
         "1" "HDMI-1" \
         "2" "HDMI-2" \
-        3>&1 1>&2 2>&3)
+        )
       if [ $? -eq 1 ] ; then
         return
       fi
@@ -970,7 +984,7 @@ do_wifi_country() {
     oIFS="$IFS"
     IFS="/"
     #shellcheck disable=2086
-    REGDOMAIN=$(whiptail --menu "Select the country in which the Pi is to be used" 20 60 10 ${value} 3>&1 1>&2 2>&3)
+    REGDOMAIN=$(wt_menu "Select the country in which the Pi is to be used" ${value})
     RET=$?
     IFS="$oIFS"
     if [ $RET -eq 1 ]; then # user selected Cancel
@@ -1076,18 +1090,18 @@ shift during boot to temporarily disable overclock.
 See https://www.raspberrypi.org/documentation/configuration/config-txt/overclocking.md for more information.\
 "
     if is_pione; then
-      OVERCLOCK=$(whiptail --menu "Choose overclock preset" 20 60 10 \
+      OVERCLOCK=$(wt_menu "Choose overclock preset" \
         "None" "700MHz ARM, 250MHz core, 400MHz SDRAM, 0 overvolt" \
         "Modest" "800MHz ARM, 250MHz core, 400MHz SDRAM, 0 overvolt" \
         "Medium" "900MHz ARM, 250MHz core, 450MHz SDRAM, 2 overvolt" \
         "High" "950MHz ARM, 250MHz core, 450MHz SDRAM, 6 overvolt" \
         "Turbo" "1000MHz ARM, 500MHz core, 600MHz SDRAM, 6 overvolt" \
-        3>&1 1>&2 2>&3)
+        )
     elif is_pitwo; then
-      OVERCLOCK=$(whiptail --menu "Choose overclock preset" 20 60 10 \
+      OVERCLOCK=$(wt_menu "Choose overclock preset" \
         "None" "900MHz ARM, 250MHz core, 450MHz SDRAM, 0 overvolt" \
         "High" "1000MHz ARM, 500MHz core, 500MHz SDRAM, 2 overvolt" \
-        3>&1 1>&2 2>&3)
+        )
     fi
   else
     OVERCLOCK=$1
@@ -1911,10 +1925,10 @@ get_browser() {
 
 do_browser() {
   if [ "$INTERACTIVE" = True ]; then
-    RES=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Select Browser" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+    RES=$(wt_menu "Select Browser" \
       "1" "Chromium" \
       "2" "Firefox" \
-      3>&1 1>&2 2>&3)
+      )
   else
     RES=""
     BROWSER=$1
@@ -1942,13 +1956,13 @@ do_browser() {
 
 do_journald_storage() {
   if [ "$INTERACTIVE" = True ]; then
-    RES=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Select Log Location" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+    RES=$(wt_menu "Select Log Location" \
       "1" "Default" \
       "2" "Volatile" \
       "3" "Persistent" \
       "4" "Auto" \
       "5" "None" \
-      3>&1 1>&2 2>&3)
+      )
   else
     RES=""
     true
@@ -1976,12 +1990,12 @@ do_journald_storage() {
 
 do_boot_behaviour() {
   if [ "$INTERACTIVE" = True ]; then
-    BOOTOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Boot Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+    BOOTOPT=$(wt_menu "Boot Options" \
       "B1 Console" "Text console, requiring user to login" \
       "B2 Console Autologin" "Text console, automatically logged in as '$USER' user" \
       "B3 Desktop" "Desktop GUI, requiring user to login" \
       "B4 Desktop Autologin" "Desktop GUI, automatically logged in as '$USER' user" \
-      3>&1 1>&2 2>&3)
+      )
   else
     BOOTOPT=$1
     true
@@ -2064,10 +2078,10 @@ get_bootloader_filename() {
 
 do_network_install_ui() {
   if [ "$INTERACTIVE" = True ]; then
-    BOOTOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Bootloader network install UI" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+    BOOTOPT=$(wt_menu "Bootloader network install UI" \
       "B1 Always" "Always display the UI for a few seconds after power on." \
       "B2 On demand" "Display the UI if the SHIFT key is presssed or if an error occurs." \
-      3>&1 1>&2 2>&3)
+      )
   else
     BOOTOPT=$1
     true
@@ -2105,10 +2119,10 @@ do_network_install_ui() {
 
 do_libliftoff() {
   if [ "$INTERACTIVE" = True ]; then
-    RET=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "libliftoff Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+    RET=$(wt_menu "libliftoff Options" \
       "L1 Disable" "Disable libliftoff hardware overlays" \
       "L2 Enable" "Enable libliftoff hardware overlays (experimental)" \
-      3>&1 1>&2 2>&3)
+      )
   else
     RET=$1
     true
@@ -2160,10 +2174,10 @@ do_libliftoff() {
 # shellcheck disable=SC2120
 do_power_off_on_halt() {
   if [ "$INTERACTIVE" = True ]; then
-    BOOTOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Configure shutdown behaviour." "$WT_HEIGHT" "$WT_WIDTH" "$WT_MENU_HEIGHT" \
+    BOOTOPT=$(wt_menu "Configure shutdown behaviour." \
       "B1 Full power off" "Switch off Pi power management (PMIC) outputs on Pi4 / Pi5 (recommended)." \
       "B2 VPU sleep mode" "Compatibility mode for HATs (e.g. POE HAT) and GPIO power buttons (Pi4)." \
-      3>&1 1>&2 2>&3)
+      )
   else
     BOOTOPT=$1
     true
@@ -2205,11 +2219,11 @@ do_power_off_on_halt() {
 
 do_boot_order() {
   if [ "$INTERACTIVE" = True ]; then
-    BOOTOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Boot Device Order" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+    BOOTOPT=$(wt_menu "Boot Device Order" \
       "B1 SD Card Boot " "Boot from SD Card before trying NVMe and then USB (RECOMMENDED)" \
       "B2 NVMe/USB Boot" "Boot from NVMe before trying USB and then SD Card" \
       "B3 Network Boot " "Boot from Network unless override by SD Card" \
-      3>&1 1>&2 2>&3)
+      )
   else
     BOOTOPT=$1
     true
@@ -2278,10 +2292,10 @@ do_boot_order() {
 
 do_boot_rom() {
   if [ "$INTERACTIVE" = True ]; then
-    BOOTOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Bootloader Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+    BOOTOPT=$(wt_menu "Bootloader Options" \
       "E1 Latest" "Use the latest bootloader image" \
       "E2 Default" "Use the factory default bootloader image" \
-      3>&1 1>&2 2>&3)
+      )
   else
     BOOTOPT=$1
     true
@@ -2628,10 +2642,10 @@ do_gldriver() {
     wt_msgbox "Required packages not found, please install: ${missing_packages}"
     return 1
   fi
-  GLOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "GL Driver" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+  GLOPT=$(wt_menu "GL Driver" \
     "G1 Legacy" "Original non-GL desktop driver" \
     "G2 GL (Full KMS)" "OpenGL desktop driver with full KMS" \
-    3>&1 1>&2 2>&3)
+    )
   if [ $? -eq 0 ]; then
     case "$GLOPT" in
       G1*)
@@ -2740,16 +2754,16 @@ do_glamor() {
 do_wayland() {
   if [ "$INTERACTIVE" = True ]; then
     if [ -f /usr/bin/labwc ]; then
-      RET=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Wayland Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+      RET=$(wt_menu "Wayland Options" \
         "W1 X11" "Openbox window manager with X11 backend" \
         "W2 Wayfire" "Wayfire window manager with Wayland backend" \
         "W3 Labwc" "Labwc window manager with Wayland backend" \
-        3>&1 1>&2 2>&3)
+        )
     else
-      RET=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Wayland Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+      RET=$(wt_menu "Wayland Options" \
         "W1 X11" "Openbox window manager with X11 backend" \
         "W2 Wayfire" "Wayfire window manager with Wayland backend" \
-        3>&1 1>&2 2>&3)
+        )
     fi
   else
     RET=$1
@@ -2828,7 +2842,7 @@ do_audioconf() {
         OPTIONS="$OPTIONS 2 Pipewire"
       fi
       #shellcheck disable=2086
-      PPOPT=$(whiptail --menu "Select the audio configuration to use" 20 60 10 $OPTIONS --default-item "$DEFAULT" 3>&1 1>&2 2>&3)
+      PPOPT=$(wt_menu "Select the audio configuration to use" $OPTIONS --default-item $DEFAULT)
       RET="$?"
     fi
   else
@@ -2926,7 +2940,7 @@ do_audio() {
       list=$(sudo -u $USER XDG_RUNTIME_DIR=/run/user/$SUDO_UID LANG=C pactl list sinks | grep -e "Sink #" -e "alsa.card_name" | sed s/*//g | sed s/^[' '\\t]*//g | sed s/'Sink #'//g | sed s/'alsa.card_name = '//g | sed s/'bcm2835 '//g | sed s/\"//g | tr '\n' '/')
       if [ -n "$list" ] ; then
         IFS="/"
-        AUDIO_OUT=$(whiptail --menu "Choose the audio output" 20 60 10 ${list} 3>&1 1>&2 2>&3)
+        AUDIO_OUT=$(wt_menu "Choose the audio output" ${list})
       else
         wt_msgbox "No internal audio devices found"
         return 1
@@ -2942,11 +2956,11 @@ do_audio() {
   else
     if aplay -l | grep -q "bcm2835 ALSA"; then
       if [ "$INTERACTIVE" = True ]; then
-        AUDIO_OUT=$(whiptail --menu "Choose the audio output" 20 60 10 \
+        AUDIO_OUT=$(wt_menu "Choose the audio output" \
           "0" "Auto" \
           "1" "Force 3.5mm ('headphone') jack" \
           "2" "Force HDMI" \
-          3>&1 1>&2 2>&3)
+          )
       else
         AUDIO_OUT=$1
       fi
@@ -2979,7 +2993,7 @@ do_audio() {
         else
           oIFS="$IFS"
           IFS="/"
-          AUDIO_OUT=$(whiptail --menu "Choose the audio output" 20 60 10 ${array} 3>&1 1>&2 2>&3)
+          AUDIO_OUT=$(wt_menu "Choose the audio output" ${array})
           IFS="$oIFS"
         fi
       else
@@ -3034,7 +3048,7 @@ do_resolution() {
       value=$value$(tvservice -m CEA | grep progressive | cut -b 12- | sed 's/mode \([0-9]\+\): \([0-9]\+\)x\([0-9]\+\) @ \([0-9]\+\)Hz \([0-9]\+\):\([0-9]\+\), clock:[0-9]\+MHz progressive/CEA Mode \1\/\2x\3 \4Hz \5:\6/' | tr '\n' '/')
       value=$value$(tvservice -m DMT | grep progressive | cut -b 12- | sed 's/mode \([0-9]\+\): \([0-9]\+\)x\([0-9]\+\) @ \([0-9]\+\)Hz \([0-9]\+\):\([0-9]\+\), clock:[0-9]\+MHz progressive/DMT Mode \1\/\2x\3 \4Hz \5:\6/' | tr '\n' '/')
     fi
-    RES=$(whiptail --default-item $CSET --menu "Choose screen resolution" 20 60 10 ${value} 3>&1 1>&2 2>&3)
+    RES=$(wt_menu "Choose screen resolution" ${value} --default-item $CSET)
     STATUS=$?
     IFS="$oIFS"
     if [ $STATUS -eq 0 ] ; then
@@ -3107,7 +3121,7 @@ do_vnc_resolution() {
     if [ "$CUR" = "" ] ; then
       CUR=640x480
     fi
-    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --default-item $CUR --menu "Set VNC Resolution" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+    FUN=$(wt_menu "Set VNC Resolution"
       "640x480" "" \
       "720x480" "" \
       "800x600" "" \
@@ -3116,7 +3130,8 @@ do_vnc_resolution() {
       "1280x1024" "" \
       "1600x1200" "" \
       "1920x1080" "" \
-      3>&1 1>&2 2>&3)
+      --default-item $CUR \
+      )
     RET=$?
   else
     FUN=$1
@@ -3669,11 +3684,11 @@ get_squeekboard() {
 
 do_squeekboard() {
   if [ "$INTERACTIVE" = True ]; then
-    OPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "On-screen Keyboard" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+    OPT=$(wt_menu "On-screen Keyboard" \
       "S1 Always On" "On-screen keyboard always enabled" \
       "S2 Autodetect" "On-screen keyboard enabled if touch device found" \
       "S3 Always Off" "On-screen keyboard disabled" \
-      3>&1 1>&2 2>&3)
+      )
   else
     OPT=$1
     true
@@ -3761,9 +3776,7 @@ do_squeek_output() {
     menu=$($PREFIX wlr-randr | grep -v ^' ' | cut -d ' ' -f 1 | tr '\n' '/' | sed 's#/#//#g')
     oIFS="$IFS"
     IFS="/"
-    OPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Select where the on-screen keyboard is to be shown" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
-      ${menu} \
-      3>&1 1>&2 2>&3)
+    OPT=$(wt_menu "Select where the on-screen keyboard is to be shown" ${menu})
     IFS="$oIFS"
   else
     OPT=$1
@@ -3848,7 +3861,7 @@ fi
 
 do_system_menu() {
   if is_pi ; then
-    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "System Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+    FUN=$(wt_sub_menu "System Options" \
       "S1 Wireless LAN" "Enter SSID and passphrase" \
       "S2 Audio" "Select audio out through HDMI or 3.5mm jack" \
       "S3 Password" "Change password for the '$USER' user" \
@@ -3858,22 +3871,22 @@ do_system_menu() {
       "S7 Power LED" "Set behaviour of power LED" \
       "S8 Browser" "Choose default web browser" \
       "S9 Logging" "Set storage location for logs" \
-      3>&1 1>&2 2>&3)
+      )
   elif is_live ; then
-    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "System Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+    FUN=$(wt_sub_menu "System Options" \
       "S1 Wireless LAN" "Enter SSID and passphrase" \
       "S3 Password" "Change password for the '$USER' user" \
       "S4 Hostname" "Set name for this computer on a network" \
       "S5 Boot / Auto Login" "Select boot into desktop or to command line" \
-      3>&1 1>&2 2>&3)
+      )
   else
-    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "System Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+    FUN=$(wt_sub_menu "System Options" \
       "S1 Wireless LAN" "Enter SSID and passphrase" \
       "S3 Password" "Change password for the '$USER' user" \
       "S4 Hostname" "Set name for this computer on a network" \
       "S5 Boot / Auto Login" "Select boot into desktop or to command line" \
       "S6 Splash Screen" "Choose graphical splash screen or text boot" \
-      3>&1 1>&2 2>&3)
+      )
   fi
   RET=$?
   if [ $RET -eq 1 ]; then
@@ -3898,44 +3911,44 @@ do_display_menu() {
   if is_pi ; then
     if is_wayland; then
       if is_pifour; then
-        FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+        FUN=$(wt_sub_menu "Display Options" \
           "D2 Screen Blanking" "Enable/disable screen blanking" \
           "D4 Composite" "Enable/disable composite output" \
           "D5 4Kp60 HDMI" "Enable 4Kp60 resolution on HDMI0" \
           "D6 Onscreen Keyboard" "Enable on-screen keyboard" \
           "D7 Keyboard Output" "Select monitor used for on-screen keyboard" \
-          3>&1 1>&2 2>&3)
+          )
       else
-        FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+        FUN=$(wt_sub_menu "Display Options" \
           "D2 Screen Blanking" "Enable/disable screen blanking" \
           "D4 Composite" "Enable/disable composite output" \
           "D6 Onscreen Keyboard" "Enable on-screen keyboard" \
           "D7 Keyboard Output" "Select monitor used for on-screen keyboard" \
-          3>&1 1>&2 2>&3)
+          )
       fi
     else
       if is_pifour; then
-        FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+        FUN=$(wt_sub_menu "Display Options" \
           "D1 Underscan" "Remove black border around screen" \
           "D2 Screen Blanking" "Enable/disable screen blanking" \
           "D3 VNC Resolution" "Set resolution for headless use" \
           "D4 Composite" "Enable/disable composite output" \
           "D5 4Kp60 HDMI" "Enable 4Kp60 resolution on HDMI0" \
-          3>&1 1>&2 2>&3)
+          )
       else
-        FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+        FUN=$(wt_sub_menu "Display Options" \
           "D1 Underscan" "Remove black border around screen" \
           "D2 Screen Blanking" "Enable/disable screen blanking" \
           "D3 VNC Resolution" "Set resolution for headless use" \
           "D4 Composite" "Enable/disable composite output" \
-          3>&1 1>&2 2>&3)
+          )
       fi
     fi
   else
-    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+    FUN=$(wt_sub_menu "Display Options" \
       "D1 Underscan" "Remove black border around screen" \
       "D2 Screen Blanking" "Enable/disable screen blanking" \
-      3>&1 1>&2 2>&3)
+      )
   fi
   RET=$?
   if [ $RET -eq 1 ]; then
@@ -3956,7 +3969,7 @@ do_display_menu() {
 
 do_interface_menu() {
   if is_pi ; then
-    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Interfacing Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+    FUN=$(wt_sub_menu "Interfacing Options" \
       "I1 SSH" "Enable/disable remote command line access using SSH" \
       "I2 RPi Connect" "Enable/disable Raspberry Pi Connect" \
       "I3 VNC" "Enable/disable graphical remote desktop access" \
@@ -3965,11 +3978,11 @@ do_interface_menu() {
       "I6 Serial Port" "Enable/disable shell messages on the serial connection" \
       "I7 1-Wire" "Enable/disable one-wire interface" \
       "I8 Remote GPIO" "Enable/disable remote access to GPIO pins" \
-      3>&1 1>&2 2>&3)
+      )
   else
-    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Interfacing Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+    FUN=$(wt_sub_menu "Interfacing Options" \
       "I1 SSH" "Enable/disable remote command line access using SSH" \
-      3>&1 1>&2 2>&3)
+      )
   fi
   RET=$?
   if [ $RET -eq 1 ]; then
@@ -3991,21 +4004,21 @@ do_interface_menu() {
 
 do_performance_menu() {
   case "$(get_pi_type)" in
-    [03]) FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Performance Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+    [03]) FUN=$(wt_sub_menu "Performance Options" \
       "P2 Overlay File System" "Enable/disable read-only file system" \
-      3>&1 1>&2 2>&3) ;;
-    [12]) FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Performance Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+      ) ;;
+    [12]) FUN=$(wt_sub_menu "Performance Options" \
       "P1 Overclock" "Configure CPU overclocking" \
       "P2 Overlay File System" "Enable/disable read-only file system" \
-      3>&1 1>&2 2>&3) ;;
-    4) FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Performance Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+      ) ;;
+    4) FUN=$(wt_sub_menu "Performance Options" \
       "P2 Overlay File System" "Enable/disable read-only file system" \
       "P3 Fan" "Set behaviour of GPIO case fan" \
-      3>&1 1>&2 2>&3) ;;
-    *) FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Performance Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+      ) ;;
+    *) FUN=$(wt_sub_menu "Performance Options" \
       "P2 Overlay File System" "Enable/disable read-only file system" \
       "P4 USB Current" "Set USB current limit" \
-      3>&1 1>&2 2>&3) ;;
+      ) ;;
   esac
   RET=$?
   if [ $RET -eq 1 ]; then
@@ -4022,12 +4035,12 @@ do_performance_menu() {
 }
 
 do_internationalisation_menu() {
-  FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Localisation Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+  FUN=$(wt_sub_menu "Localisation Options" \
     "L1 Locale" "Configure language and regional settings" \
     "L2 Timezone" "Configure time zone" \
     "L3 Keyboard" "Set keyboard layout to match your keyboard" \
     "L4 WLAN Country" "Set legal wireless channels for your country" \
-    3>&1 1>&2 2>&3)
+    )
   RET=$?
   if [ $RET -eq 1 ]; then
     return 0
@@ -4044,7 +4057,7 @@ do_internationalisation_menu() {
 
 do_advanced_menu() {
   if is_pifour ; then
-    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Advanced Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+    FUN=$(wt_sub_menu "Advanced Options" \
       "A1 Expand Filesystem" "Ensures that all of the SD card is available" \
       "A2 Network Interface Names" "Enable/disable predictable network i/f names" \
       "A3 Network Proxy Settings" "Configure network proxy settings" \
@@ -4055,9 +4068,9 @@ do_advanced_menu() {
       "A9 Network Install UI" "Select display of bootloader network install UI" \
       "A10 Libliftoff" "Enable/disable libliftoff hardware overlays" \
       "A11 Shutdown Behaviour" "Configure shutdown behavior" \
-      3>&1 1>&2 2>&3)
+      )
   elif is_pifive ; then
-    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Advanced Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+    FUN=$(wt_sub_menu "Advanced Options" \
       "A1 Expand Filesystem" "Ensures that all of the SD card is available" \
       "A2 Network Interface Names" "Enable/disable predictable network i/f names" \
       "A3 Network Proxy Settings" "Configure network proxy settings" \
@@ -4069,24 +4082,24 @@ do_advanced_menu() {
       "A9 Network Install UI" "Select display of bootloader network install UI" \
       "A10 Libliftoff" "Enable/disable libliftoff hardware overlays" \
       "A11 Shutdown Behaviour" "Configure shutdown behavior" \
-      3>&1 1>&2 2>&3)
+      )
   elif is_pi ; then
-    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Advanced Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+    FUN=$(wt_sub_menu "Advanced Options" \
       "A1 Expand Filesystem" "Ensures that all of the SD card is available" \
       "A2 Network Interface Names" "Enable/disable predictable network i/f names" \
       "A3 Network Proxy Settings" "Configure network proxy settings" \
       "A6 Wayland" "Switch between X and Wayland backends" \
       "A7 Audio Config" "Set audio control system" \
       "A10 Libliftoff" "Enable/disable libliftoff hardware overlays" \
-      3>&1 1>&2 2>&3)
+      )
   else
-    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Advanced Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+    FUN=$(wt_sub_menu "Advanced Options" \
       "A2 Network Interface Names" "Enable/disable predictable network i/f names" \
       "A3 Network Proxy Settings" "Configure network proxy settings" \
       "A6 Wayland" "Switch between X and Wayland backends" \
       "A7 Audio Config" "Set audio control system" \
       "A10 Libliftoff" "Enable/disable libliftoff hardware overlays" \
-      3>&1 1>&2 2>&3)
+      )
   fi
   RET=$?
   if [ $RET -eq 1 ]; then
@@ -4110,14 +4123,14 @@ do_advanced_menu() {
 }
 
 do_proxy_menu() {
-  FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Network Proxy Settings" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+  FUN=$(wt_sub_menu "Network Proxy Settings" \
     "P1 All" "Set the same proxy for all schemes" \
     "P2 HTTP" "Set the HTTP proxy" \
     "P3 HTTPS" "Set the HTTPS/SSL proxy" \
     "P4 FTP" "Set the FTP proxy" \
     "P5 RSYNC" "Set the RSYNC proxy" \
     "P6 Exceptions" "Set addresses for which a proxy server should not be used" \
-    3>&1 1>&2 2>&3)
+    )
   RET=$?
   if [ $RET -eq 1 ]; then
     return 0
@@ -4156,7 +4169,7 @@ if [ "$INTERACTIVE" = True ]; then
         fi
         MENU_BACKTITLE="$(cat /proc/device-tree/model), ${FMEMSIZE}"
       fi
-      FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --backtitle "$MENU_BACKTITLE" --menu "Setup Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Finish --ok-button Select \
+      FUN=$(wt_top_menu "Setup Options" \
         "1 System Options" "Configure system settings" \
         "2 Display Options" "Configure display settings" \
         "3 Interface Options" "Configure connections to peripherals" \
@@ -4165,9 +4178,10 @@ if [ "$INTERACTIVE" = True ]; then
         "6 Advanced Options" "Configure advanced settings" \
         "8 Update" "Update this tool to the latest version" \
         "9 About raspi-config" "Information about this configuration tool" \
-        3>&1 1>&2 2>&3)
+        --backtitle "$MENU_BACKTITLE" \
+        )
     else
-      FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Setup Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Finish --ok-button Select \
+      FUN=$(wt_top_menu "Setup Options" \
         "1 System Options" "Configure system settings" \
         "2 Display Options" "Configure display settings" \
         "3 Interface Options" "Configure connections to peripherals" \
@@ -4175,7 +4189,7 @@ if [ "$INTERACTIVE" = True ]; then
         "6 Advanced Options" "Configure advanced settings" \
         "8 Update" "Update this tool to the latest version" \
         "9 About raspi-config" "Information about this configuration tool" \
-        3>&1 1>&2 2>&3)
+        )
     fi
     RET=$?
     if [ $RET -eq 1 ]; then

@@ -302,6 +302,24 @@ wt_msgbox_wide() {
   wt_msgbox "$1" $WT_BOX_WIDTH_WIDE
 }
 
+wt_yesno() {
+  if [ -z $2 ] || [ "$2" = "" ]; then
+    YESNO_DEFAULT=
+  else
+    YESNO_DEFAULT="$2"
+  fi
+  if [ -z $3 ]; then
+    YESNO_WIDTH=$WT_BOX_WIDTH
+  else
+    YESNO_WIDTH=$3
+  fi
+  whiptail --yesno "$1" $YESNO_DEFAULT $WT_BOX_HEIGHT $YESNO_WIDTH 3>&1 1>&2 2>&3
+}
+
+wt_yesno_wide() {
+  wt_yesno "$1" "$2" $WT_BOX_WIDTH_WIDE
+}
+
 do_about() {
   wt_msgbox_wide "\
 This tool provides a straightforward way of doing initial
@@ -487,7 +505,7 @@ do_overscan() {
     CURRENT=1
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like to enable compensation for displays with overscan?" $DEFAULT 20 60 2
+    wt_yesno "Would you like to enable compensation for displays with overscan?" $DEFAULT
     RET=$?
   else
     RET=$1
@@ -540,7 +558,7 @@ do_overscan_kms() {
     else
       DEFAULT=
     fi
-    if whiptail --yesno "Would you like to enable overscan compensation for HDMI-$DEV?" $DEFAULT 20 60 2 ; then
+    if wt_yesno "Would you like to enable overscan compensation for HDMI-$DEV?" $DEFAULT ; then
       PIX=16
       STATUS="enabled"
     else
@@ -618,7 +636,7 @@ do_blanking() {
         wt_msgbox "Warning: xscreensaver is installed and may override raspi-config settings"
       fi
     fi
-    whiptail --yesno "Would you like to enable screen blanking?" $DEFAULT 20 60 2
+    wt_yesno "Would you like to enable screen blanking?" $DEFAULT
     RET=$?
   else
     RET=$1
@@ -1135,9 +1153,7 @@ do_ssh() {
     DEFAULT=
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno \
-      "Would you like the SSH server to be enabled?\n\nCaution: Default and weak passwords are a security risk when SSH is enabled!" \
-      $DEFAULT 20 60 2
+    wt_yesno "Would you like the SSH server to be enabled?\n\nCaution: Default and weak passwords are a security risk when SSH is enabled!" $DEFAULT
     RET=$?
   else
     RET=$1
@@ -1182,7 +1198,7 @@ do_vnc() {
   fi
   APT_GET_FLAGS=""
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like the VNC Server to be enabled?" $DEFAULT 20 60 2
+    wt_yesno "Would you like the VNC Server to be enabled?" $DEFAULT
     RET=$?
   else
     RET=$1
@@ -1261,7 +1277,7 @@ do_rpi_connect() {
   fi
   APT_GET_FLAGS=""
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like to enable screen sharing over Raspberry Pi Connect?" --defaultno 20 60 2
+    wt_yesno "Would you like to enable screen sharing over Raspberry Pi Connect?" --defaultno
     RET=$?
   else
     APT_GET_FLAGS="-y"
@@ -1285,7 +1301,7 @@ do_rpi_connect() {
     fi
   elif [ $RET -eq 1 ]; then
     if [ "$INTERACTIVE" = True ]; then
-      whiptail --yesno "Would you like to enable remote shell access over Raspberry Pi Connect?" --defaultno 20 60 2
+      wt_yesno "Would you like to enable remote shell access over Raspberry Pi Connect?" --defaultno
       RET=$?
     fi
     if [ $RET -eq 0 ]; then
@@ -1336,7 +1352,7 @@ do_spi() {
     DEFAULT=
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like the SPI interface to be enabled?" $DEFAULT 20 60 2
+    wt_yesno "Would you like the SPI interface to be enabled?" $DEFAULT
     RET=$?
   else
     RET=$1
@@ -1377,7 +1393,7 @@ do_i2c() {
     DEFAULT=
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like the ARM I2C interface to be enabled?" $DEFAULT 20 60 2
+    wt_yesno "Would you like the ARM I2C interface to be enabled?" $DEFAULT
     RET=$?
   else
     RET=$1
@@ -1487,7 +1503,7 @@ do_serial() {
     DEFAULTH=
     CURRENTH=1
   fi
-  whiptail --yesno "Would you like a login shell to be accessible over serial?" $DEFAULTS 20 60 2
+  wt_yesno "Would you like a login shell to be accessible over serial?" $DEFAULTS
   RET=$?
   if [ $RET -eq $CURRENTS ]; then
     ASK_TO_REBOOT=1
@@ -1500,7 +1516,7 @@ do_serial() {
   elif [ $RET -eq 1 ]; then
     do_serial_cons 1
     SSTATUS=disabled
-    whiptail --yesno "Would you like the serial port hardware to be enabled?" $DEFAULTH 20 60 2
+    wt_yesno "Would you like the serial port hardware to be enabled?" $DEFAULTH
     RET=$?
     if [ $RET -eq $CURRENTH ]; then
       ASK_TO_REBOOT=1
@@ -1533,7 +1549,7 @@ do_serial_pi5() {
     DEFAULTH=
     CURRENTH=1
   fi
-  whiptail --yesno "Would you like a login shell to be accessible over serial?" $DEFAULTS 20 60 2
+  wt_yesno "Would you like a login shell to be accessible over serial?" $DEFAULTS
   RET=$?
   if [ $RET -eq $CURRENTS ]; then
     ASK_TO_REBOOT=1
@@ -1547,7 +1563,7 @@ do_serial_pi5() {
   else
     return $RET
   fi
-  whiptail --yesno "Would you like the serial port hardware to be enabled?" $DEFAULTH 20 60 2
+  wt_yesno "Would you like the serial port hardware to be enabled?" $DEFAULTH
   RET=$?
   if [ $RET -eq $CURRENTH ]; then
     ASK_TO_REBOOT=1
@@ -1580,7 +1596,7 @@ do_pci() {
     CURRENT=0
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like PCIe Gen 3 to be enabled?" $DEFAULT 20 60 2
+    wt_yesno "Would you like PCIe Gen 3 to be enabled?" $DEFAULT
     RET=$?
   else
     RET=$1
@@ -1655,7 +1671,7 @@ do_pi4video() {
     DEFAULT=
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like to enable 4Kp60 output on HDMI0?" $DEFAULT 20 60 2
+    wt_yesno "Would you like to enable 4Kp60 output on HDMI0?" $DEFAULT
     RET=$?
   else
     RET=$1
@@ -1699,7 +1715,7 @@ do_composite() {
     DEFAULT=
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like composite video output to be enabled? Warning - this will disable the HDMI outputs." $DEFAULT 20 60 2
+    wt_yesno "Would you like composite video output to be enabled? Warning - this will disable the HDMI outputs." $DEFAULT
     RET=$?
   else
     RET=$1
@@ -1749,7 +1765,7 @@ do_leds() {
     DEFAULT=
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like the power LED to flash during disk activity?" $DEFAULT 20 60 2
+    wt_yesno "Would you like the power LED to flash during disk activity?" $DEFAULT
     RET=$?
   else
     RET=$1
@@ -1801,7 +1817,7 @@ do_fan() {
   GNOW=$(get_fan_gpio)
   TNOW=$(get_fan_temp)
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like to enable fan temperature control?" $DEFAULT 20 60 2
+    wt_yesno "Would you like to enable fan temperature control?" $DEFAULT
     RET=$?
   else
     RET=$1
@@ -2029,7 +2045,7 @@ get_bootloader_filename() {
   done
   if [ $EXACT_MATCH != 1 ]; then
     if [ "$INTERACTIVE" = True ]; then
-      whiptail --yesno "Current EEPROM version $(date -d $CURDATE +%Y-%m-%d) or newer not found.\n\nTry updating the rpi-eeprom APT package.\n\nInstall latest local $(basename $FILNAME) anyway?" 20 70 3
+      wt_yesno_wide "Current EEPROM version $(date -d $CURDATE +%Y-%m-%d) or newer not found.\n\nTry updating the rpi-eeprom APT package.\n\nInstall latest local $(basename $FILNAME) anyway?"
       DEFAULTS=$?
       if [ "$DEFAULTS" -ne 0 ]; then
         FILNAME="none" # no
@@ -2278,7 +2294,7 @@ do_boot_rom() {
         ;;
     esac
     if [ "$INTERACTIVE" = True ]; then
-      whiptail --yesno "$EETYPE bootloader selected - will be loaded at next reboot.\n\nReset bootloader to default configuration?" 20 60 2
+      wt_yesno "$EETYPE bootloader selected - will be loaded at next reboot.\n\nReset bootloader to default configuration?"
       DEFAULTS=$?
     else
       DEFAULTS=$2
@@ -2333,7 +2349,7 @@ do_boot_splash() {
     DEFAULT=
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like to show the splash screen at boot?" $DEFAULT 20 60 2
+    wt_yesno "Would you like to show the splash screen at boot?" $DEFAULT
     RET=$?
   else
     RET=$1
@@ -2388,7 +2404,7 @@ do_rgpio() {
     DEFAULT=
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like the GPIO server to be accessible over the network?" $DEFAULT 20 60 2
+    wt_yesno "Would you like the GPIO server to be accessible over the network?" $DEFAULT
     RET=$?
   else
     RET=$1
@@ -2453,7 +2469,7 @@ do_camera() {
     CURRENT=1
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like the camera interface to be enabled?" $DEFAULT 20 60 2
+    wt_yesno "Would you like the camera interface to be enabled?" $DEFAULT
     RET=$?
   else
     RET=$1
@@ -2504,7 +2520,7 @@ do_onewire() {
     CURRENT=1
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like the one-wire interface to be enabled?" $DEFAULT 20 60 2
+    wt_yesno "Would you like the one-wire interface to be enabled?" $DEFAULT
     RET=$?
   else
     RET=$1
@@ -2545,7 +2561,7 @@ do_legacy() {
     CURRENT=1
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like to enable legacy camera support?" $DEFAULT 20 60 2
+    wt_yesno "Would you like to enable legacy camera support?" $DEFAULT
     RET=$?
   else
     RET=$1
@@ -2648,7 +2664,7 @@ do_xcompmgr() {
     CURRENT=1
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like the xcompmgr composition manager to be enabled?" $DEFAULT 20 60 2
+    wt_yesno "Would you like the xcompmgr composition manager to be enabled?" $DEFAULT
     RET=$?
   else
     RET=$1
@@ -2688,7 +2704,7 @@ do_glamor() {
     CURRENT=0
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like glamor acceleration to be enabled?" $DEFAULT 20 60 2
+    wt_yesno "Would you like glamor acceleration to be enabled?" $DEFAULT
     RET=$?
   else
     RET=$1
@@ -2862,7 +2878,7 @@ do_net_names () {
     CURRENT=1
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like to enable predictable network interface names?" $DEFAULT 20 60 2
+    wt_yesno "Would you like to enable predictable network interface names?" $DEFAULT
     RET=$?
   else
     RET=$1
@@ -3263,7 +3279,7 @@ do_wifi_ssid_passphrase() {
 do_finish() {
   disable_raspi_config_at_boot
   if [ $ASK_TO_REBOOT -eq 1 ]; then
-    whiptail --yesno "Would you like to reboot now?" 20 60 2
+    wt_yesno "Would you like to reboot now?"
     if [ $? -eq 0 ]; then # yes
       sync
       reboot
@@ -3455,7 +3471,7 @@ do_overlayfs() {
     STATUS="enabled"
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like the overlay file system to be enabled?" $DEFAULT 20 60 2
+    wt_yesno "Would you like the overlay file system to be enabled?" $DEFAULT
     RET=$?
   else
     RET=$1
@@ -3501,7 +3517,7 @@ do_overlayfs() {
       STATUS="read-only"
     fi
     if [ "$INTERACTIVE" = True ]; then
-      whiptail --yesno "Would you like the boot partition to be write-protected?" $DEFAULT 20 60 2
+      wt_yesno "Would you like the boot partition to be write-protected?" $DEFAULT
       RET=$?
     else
       RET=$1
@@ -3608,7 +3624,7 @@ do_usb_current() {
     DEFAULT=
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like the USB current limit to be disabled?" $DEFAULT 20 60 2
+    wt_yesno "Would you like the USB current limit to be disabled?" $DEFAULT
     RET=$?
   else
     RET=$1

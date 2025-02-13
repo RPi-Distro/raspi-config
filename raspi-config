@@ -276,6 +276,9 @@ calc_wt_size() {
   # stderr is a tty and so only gives default 80, 24 values
   WT_HEIGHT=18
   WT_WIDTH=$(tput cols)
+  WT_BOX_HEIGHT=20
+  WT_BOX_WIDTH=60
+  WT_BOX_WIDTH_WIDE=70
 
   if [ -z "$WT_WIDTH" ] || [ "$WT_WIDTH" -lt 60 ]; then
     WT_WIDTH=80
@@ -286,15 +289,28 @@ calc_wt_size() {
   WT_MENU_HEIGHT=$((WT_HEIGHT - 7))
 }
 
+wt_msgbox() {
+  if [ -z $2 ]; then
+    MSGBOX_WIDTH=$WT_BOX_WIDTH
+  else
+    MSGBOX_WIDTH=$2
+  fi
+  whiptail --msgbox "$1" $WT_BOX_HEIGHT $MSGBOX_WIDTH
+}
+
+wt_msgbox_wide() {
+  wt_msgbox "$1" $WT_BOX_WIDTH_WIDE
+}
+
 do_about() {
-  whiptail --msgbox "\
+  wt_msgbox_wide "\
 This tool provides a straightforward way of doing initial
 configuration of the Raspberry Pi. Although it can be run
 at any time, some of the options may have difficulties if
 you have heavily customised your installation.
 
 $(dpkg -s raspi-config 2> /dev/null | grep Version)\
-" 20 70 1
+"
   return 0
 }
 
@@ -325,7 +341,7 @@ do_expand_rootfs() {
 
   LAST_PART_NUM=$(parted "$ROOT_DEV" -ms unit s p | tail -n 1 | cut -f 1 -d:)
   if [ "$LAST_PART_NUM" -ne "$PART_NUM" ]; then
-    whiptail --msgbox "$ROOT_PART is not the last partition. Don't know how to expand" 20 60 2
+    wt_msgbox "$ROOT_PART is not the last partition. Don't know how to expand"
     return 0
   fi
 
@@ -380,7 +396,7 @@ EOF
   chmod +x /etc/init.d/resize2fs_once &&
   update-rc.d resize2fs_once defaults &&
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "Root partition has been resized.\nThe filesystem will be enlarged upon the next reboot" 20 60 2
+    wt_msgbox "Root partition has been resized.\nThe filesystem will be enlarged upon the next reboot"
   fi
 }
 
@@ -490,7 +506,7 @@ do_overscan() {
     return $RET
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "Display overscan compensation is $STATUS" 20 60 1
+    wt_msgbox "Display overscan compensation is $STATUS"
   fi
 }
 
@@ -561,7 +577,7 @@ do_overscan_kms() {
     sed /usr/share/dispsetup.sh -i -e "s#exit#if [ -e /usr/share/ovscsetup.sh ] ; then\n. /usr/share/ovscsetup.sh\nfi\nexit#"
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "Display overscan compensation for HDMI-$DEV is $STATUS" 20 60 1
+    wt_msgbox "Display overscan compensation for HDMI-$DEV is $STATUS"
   fi
 }
 
@@ -599,7 +615,7 @@ do_blanking() {
   if [ "$INTERACTIVE" = True ]; then
     if ! is_wayland ; then
       if [ "$(dpkg -l xscreensaver | tail -n 1 | cut -d ' ' -f 1)" = "ii" ]; then
-        whiptail --msgbox "Warning: xscreensaver is installed and may override raspi-config settings" 20 60 2
+        wt_msgbox "Warning: xscreensaver is installed and may override raspi-config settings"
       fi
     fi
     whiptail --yesno "Would you like to enable screen blanking?" $DEFAULT 20 60 2
@@ -670,14 +686,14 @@ do_blanking() {
     fi
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "Screen blanking is $STATUS" 20 60 1
+    wt_msgbox "Screen blanking is $STATUS"
   fi
 }
 
 do_change_pass() {
-  whiptail --msgbox "You will now be asked to enter a new password for the $USER user" 20 60 1
+  wt_msgbox "You will now be asked to enter a new password for the $USER user"
   passwd $USER &&
-  whiptail --msgbox "Password changed successfully" 20 60 1
+  wt_msgbox "Password changed successfully"
 }
 
 update_wayfire_keyboard() {
@@ -939,7 +955,7 @@ do_wifi_country() {
   fi
   if ! grep -q "^${REGDOMAIN}[[:space:]]" /usr/share/zoneinfo/iso3166.tab; then
     if [ "$INTERACTIVE" = True ]; then
-      whiptail --msgbox "$REGDOMAIN is not a valid ISO/IEC 3166-1 alpha2 code" 20 60
+      wt_msgbox "$REGDOMAIN is not a valid ISO/IEC 3166-1 alpha2 code"
     fi
     return 1
   fi
@@ -978,7 +994,7 @@ do_wifi_country() {
     done
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "Wireless LAN country set to $REGDOMAIN" 20 60 1
+    wt_msgbox "Wireless LAN country set to $REGDOMAIN"
   fi
   if ! ischroot && pgrep wf-panel-pi > /dev/null; then
     wfpanelctl netman cset
@@ -994,13 +1010,13 @@ get_hostname() {
 
 do_hostname() {
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "\
+    wt_msgbox_wide "\
 Please note: RFCs mandate that a hostname's labels \
 may contain only the ASCII letters 'a' through 'z' (case-insensitive),
 the digits '0' through '9', and the hyphen.
 Hostname labels cannot begin or end with a hyphen.
 No other symbols, punctuation characters, or blank spaces are permitted.\
-" 20 70 1
+"
   fi
   CURRENT_HOSTNAME=$(get_hostname)
   if [ "$INTERACTIVE" = True ]; then
@@ -1022,17 +1038,17 @@ No other symbols, punctuation characters, or blank spaces are permitted.\
 
 do_overclock() {
   if ! is_pione && ! is_pitwo; then
-    whiptail --msgbox "Only Pi 1 or Pi 2 can be overclocked with this tool." 20 60 2
+    wt_msgbox "Only Pi 1 or Pi 2 can be overclocked with this tool."
     return 1
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "\
+    wt_msgbox_wide "\
 Be aware that overclocking may reduce the lifetime of your
 Raspberry Pi. If overclocking at a certain level causes
 system instability, try a more modest overclock. Hold down
 shift during boot to temporarily disable overclock.
 See https://www.raspberrypi.org/documentation/configuration/config-txt/overclocking.md for more information.\
-" 20 70 1
+"
     if is_pione; then
       OVERCLOCK=$(whiptail --menu "Choose overclock preset" 20 60 10 \
         "None" "700MHz ARM, 250MHz core, 400MHz SDRAM, 0 overvolt" \
@@ -1073,7 +1089,7 @@ See https://www.raspberrypi.org/documentation/configuration/config-txt/overclock
         set_overclock $OVERCLOCK 1000 500 600 6
         ;;
       *)
-        whiptail --msgbox "Programmer error, unrecognised overclock preset" 20 60 2
+        wt_msgbox "Programmer error, unrecognised overclock preset"
         return 1
         ;;
     esac
@@ -1087,7 +1103,7 @@ set_overclock() {
   set_config_var sdram_freq $4 $CONFIG &&
   set_config_var over_voltage $5 $CONFIG &&
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "Set overclock to preset '$1'" 20 60 2
+    wt_msgbox "Set overclock to preset '$1'"
   fi
 }
 
@@ -1097,7 +1113,7 @@ clear_overclock () {
   clear_config_var sdram_freq $CONFIG &&
   clear_config_var over_voltage $CONFIG &&
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "Set overclock to preset 'None'" 20 60 2
+    wt_msgbox "Set overclock to preset 'None'"
   fi
 }
 
@@ -1111,7 +1127,7 @@ get_ssh() {
 
 do_ssh() {
   if [ -e /var/log/regen_ssh_keys.log ] && ! grep -q "^finished" /var/log/regen_ssh_keys.log; then
-    whiptail --msgbox "Initial ssh key generation still running. Please wait and try again." 20 60 2
+    wt_msgbox "Initial ssh key generation still running. Please wait and try again."
     return 1
   fi
   DEFAULT=--defaultno
@@ -1139,7 +1155,7 @@ do_ssh() {
     return $RET
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "The SSH server is $STATUS" 20 60 1
+    wt_msgbox "The SSH server is $STATUS"
   fi
 }
 
@@ -1176,7 +1192,7 @@ do_vnc() {
     if is_installed wayvnc; then
       wayvnc_version="$(get_package_version wayvnc)"
       if dpkg --compare-versions "$wayvnc_version" lt 0.8; then
-        whiptail --msgbox "WayVNC version 0.8 or greater is required (have $wayvnc_version)" 20 60 1
+        wt_msgbox "WayVNC version 0.8 or greater is required (have $wayvnc_version)"
         return 1
       fi
 
@@ -1222,7 +1238,7 @@ do_vnc() {
     return $RET
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "The VNC Server is $STATUS" 20 60 1
+    wt_msgbox "The VNC Server is $STATUS"
   fi
 }
 
@@ -1302,7 +1318,7 @@ do_rpi_connect() {
     return $RET
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "$STATUS" 20 60 1
+    wt_msgbox "$STATUS"
   fi
 }
 
@@ -1343,7 +1359,7 @@ do_spi() {
   dtparam spi=$SETTING
 
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "The SPI interface is $STATUS" 20 60 1
+    wt_msgbox "The SPI interface is $STATUS"
   fi
 }
 
@@ -1389,7 +1405,7 @@ do_i2c() {
   modprobe i2c-dev
 
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "The ARM I2C interface is $STATUS" 20 60 1
+    wt_msgbox "The ARM I2C interface is $STATUS"
   fi
 }
 
@@ -1501,7 +1517,7 @@ do_serial() {
   else
     return $RET
   fi
-  whiptail --msgbox "The serial login shell is $SSTATUS\nThe serial interface is $HSTATUS" 20 60 1
+  wt_msgbox "The serial login shell is $SSTATUS\nThe serial interface is $HSTATUS"
 }
 
 do_serial_pi5() {
@@ -1545,7 +1561,7 @@ do_serial_pi5() {
   else
     return $RET
   fi
-  whiptail --msgbox "The serial login shell is $SSTATUS\nThe serial interface is $HSTATUS" 20 60 1
+  wt_msgbox "The serial login shell is $SSTATUS\nThe serial interface is $HSTATUS"
 }
 
 get_pci() {
@@ -1583,7 +1599,7 @@ do_pci() {
   fi
 
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "PCIe Gen 3 is $STATUS" 20 60 1
+    wt_msgbox "PCIe Gen 3 is $STATUS"
   fi
 }
 
@@ -1664,7 +1680,7 @@ do_pi4video() {
     ASK_TO_REBOOT=1
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "4Kp60 is $STATUS" 20 60 1
+    wt_msgbox "4Kp60 is $STATUS"
   fi
 }
 
@@ -1704,7 +1720,7 @@ do_composite() {
     ASK_TO_REBOOT=1
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "Composite video output is $STATUS" 20 60 1
+    wt_msgbox "Composite video output is $STATUS"
   fi
 }
 
@@ -1724,7 +1740,7 @@ do_leds() {
   CURRENT=$(get_leds)
   if [ $CURRENT -eq -1 ] ; then
     if [ "$INTERACTIVE" = True ]; then
-      whiptail --msgbox "The LED behaviour cannot be changed on this model of Raspberry Pi" 20 60 1
+      wt_msgbox "The LED behaviour cannot be changed on this model of Raspberry Pi"
     fi
     return 1
   fi
@@ -1753,7 +1769,7 @@ do_leds() {
   fi
   echo $LEDSET | tee /sys/class/leds/ACT/trigger > /dev/null
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "The power LED will $STATUS" 20 60 1
+    wt_msgbox "The power LED will $STATUS"
   fi
 }
 
@@ -1805,13 +1821,13 @@ do_fan() {
     fi
     if ! echo "$GPIO" | grep -q "^[[:digit:]]*$" ; then
       if [ "$INTERACTIVE" = True ]; then
-        whiptail --msgbox "GPIO must be a number between 2 and 27" 20 60 1
+        wt_msgbox "GPIO must be a number between 2 and 27"
       fi
       return 1
     fi
     if [ "$GPIO" -lt 2 ] || [ "$GPIO" -gt 27 ]  ; then
       if [ "$INTERACTIVE" = True ]; then
-        whiptail --msgbox "GPIO must be a number between 2 and 27" 20 60 1
+        wt_msgbox "GPIO must be a number between 2 and 27"
       fi
       return 1
     fi
@@ -1829,13 +1845,13 @@ do_fan() {
     fi
     if ! echo "$TIN" | grep -q "^[[:digit:]]*$" ; then
       if [ "$INTERACTIVE" = True ]; then
-        whiptail --msgbox "Temperature must be a number between 60 and 120" 20 60 1
+        wt_msgbox "Temperature must be a number between 60 and 120"
       fi
       return 1
     fi
     if [ "$TIN" -lt 60 ] || [ "$TIN" -gt 120 ]  ; then
       if [ "$INTERACTIVE" = True ]; then
-        whiptail --msgbox "Temperature must be a number between 60 and 120" 20 60 1
+        wt_msgbox "Temperature must be a number between 60 and 120"
       fi
       return 1
     fi
@@ -1852,7 +1868,7 @@ do_fan() {
     fi
     ASK_TO_REBOOT=1
     if [ "$INTERACTIVE" = True ]; then
-      whiptail --msgbox "The fan on GPIO $GPIO is enabled and will turn on at $TIN degrees Celsius" 20 60 1
+      wt_msgbox "The fan on GPIO $GPIO is enabled and will turn on at $TIN degrees Celsius"
     fi
   else
     if grep -q "^dtoverlay=gpio-fan" $CONFIG ; then
@@ -1860,7 +1876,7 @@ do_fan() {
     fi
     sed $CONFIG -i -e "/^.*dtoverlay=gpio-fan.*/d"
     if [ "$INTERACTIVE" = True ]; then
-      whiptail --msgbox "The fan is disabled" 20 60 1
+      wt_msgbox "The fan is disabled"
     fi
   fi
 }
@@ -1895,7 +1911,7 @@ do_browser() {
       sudo -u $2 xdg-settings set default-web-browser $BROWSER.desktop
     fi
     if [ "$INTERACTIVE" = True ]; then
-      whiptail --msgbox "Default browser set to $BSTRING" 20 60 1
+      wt_msgbox "Default browser set to $BSTRING"
     fi
   fi
 }
@@ -1929,7 +1945,7 @@ do_journald_storage() {
     REPLACEMENT="$([ ! -z $JSTRING ] && echo "Storage=$JSTRING" || echo "#Storage=auto")"
     sed --in-place -E "s/^#?Storage=.*/${REPLACEMENT}/" /etc/systemd/journald.conf
     if [ "$INTERACTIVE" = True ]; then
-      whiptail --msgbox "Logging location set to ${JSTRING:-default}" 20 60 1
+      wt_msgbox "Logging location set to ${JSTRING:-default}"
     fi
   fi
 }
@@ -1955,12 +1971,12 @@ do_boot_behaviour() {
         if [ -e /etc/init.d/lightdm ]; then
           systemctl --quiet set-default graphical.target
         else
-          whiptail --msgbox "Do 'sudo apt-get install lightdm' to allow configuration of boot to desktop" 20 60 2
+          wt_msgbox "Do 'sudo apt-get install lightdm' to allow configuration of boot to desktop"
           return 1
         fi
         ;;
       *)
-        whiptail --msgbox "Programmer error, unrecognised boot option" 20 60 2
+        wt_msgbox "Programmer error, unrecognised boot option"
         return 1
         ;;
     esac
@@ -2054,7 +2070,7 @@ do_network_install_ui() {
         true
         ;;
       *)
-        whiptail --msgbox "Programmer error, unrecognised network install option" 20 60 2
+        wt_msgbox "Programmer error, unrecognised network install option"
         return 1
         ;;
     esac
@@ -2084,14 +2100,14 @@ do_libliftoff() {
         STATUS="enabled"
         ;;
       *)
-        whiptail --msgbox "Programmer error, unrecognised libliftoff option" 20 60 2
+        wt_msgbox "Programmer error, unrecognised libliftoff option"
         return 1
         ;;
     esac
 
     # Create the config dir and/or environment file, if needed
     if [ -z $HOMEDIR ]; then
-      whiptail --msgbox "Unknown user home directory" 20 60 2
+      wt_msgbox "Unknown user home directory"
       return 1
     fi
     ensure_user_labwc_dir
@@ -2113,7 +2129,7 @@ do_libliftoff() {
     return 0
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "libliftoff is $STATUS" 20 60 1
+    wt_msgbox "libliftoff is $STATUS"
   fi
 }
 
@@ -2154,7 +2170,7 @@ do_power_off_on_halt() {
         true
         ;;
       *)
-        whiptail --msgbox "Programmer error, unrecognised shutdown option" 20 60 2
+        wt_msgbox "Programmer error, unrecognised shutdown option"
         return 1
         ;;
     esac
@@ -2215,7 +2231,7 @@ do_boot_order() {
         STATUS="Network"
         ;;
       *)
-        whiptail --msgbox "Programmer error, unrecognised boot order option" 20 60 2
+        wt_msgbox "Programmer error, unrecognised boot order option"
         return 1
         ;;
     esac
@@ -2230,7 +2246,7 @@ do_boot_order() {
     rpi-eeprom-config --apply $EECFG $FILNAME
     ASK_TO_REBOOT=1
     if [ "$INTERACTIVE" = True ]; then
-      whiptail --msgbox "$STATUS is default boot device" 20 60 1
+      wt_msgbox "$STATUS is default boot device"
     fi
   fi
 }
@@ -2257,7 +2273,7 @@ do_boot_rom() {
         EETYPE="Factory default"
         ;;
       *)
-        whiptail --msgbox "Programmer error, unrecognised bootloader option" 20 60 2
+        wt_msgbox "Programmer error, unrecognised bootloader option"
         return 1
         ;;
     esac
@@ -2278,11 +2294,11 @@ do_boot_rom() {
       fi
       rpi-eeprom-update -d -f $FILNAME
       if [ "$INTERACTIVE" = True ]; then
-        whiptail --msgbox "Bootloader reset to default configuration" 20 60 2
+        wt_msgbox "Bootloader reset to default configuration"
       fi
     else
       if [ "$INTERACTIVE" = True ]; then
-        whiptail --msgbox "Bootloader not reset to defaults" 20 60 2
+        wt_msgbox "Bootloader not reset to defaults"
       fi
     fi
     ASK_TO_REBOOT=1
@@ -2308,7 +2324,7 @@ get_boot_splash() {
 do_boot_splash() {
   if [ ! -e /usr/share/plymouth/themes/pix/pix.script ]; then
     if [ "$INTERACTIVE" = True ]; then
-      whiptail --msgbox "The splash screen is not installed so cannot be activated" 20 60 2
+      wt_msgbox "The splash screen is not installed so cannot be activated"
     fi
     return 1
   fi
@@ -2354,7 +2370,7 @@ do_boot_splash() {
     return $RET
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "Splash screen at boot is $STATUS" 20 60 1
+    wt_msgbox "Splash screen at boot is $STATUS"
   fi
 }
 
@@ -2396,7 +2412,7 @@ EOF
     systemctl restart pigpiod
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "Remote access to the GPIO server is $STATUS" 20 60 1
+    wt_msgbox "Remote access to the GPIO server is $STATUS"
   fi
 }
 
@@ -2424,7 +2440,7 @@ get_camera() {
 
 do_camera() {
   if [ $(deb_ver) -le 10 ] && [ ! -e /boot${FIRMWARE}/start_x.elf ]; then
-    whiptail --msgbox "Your firmware appears to be out of date (no start_x.elf). Please update" 20 60 2
+    wt_msgbox "Your firmware appears to be out of date (no start_x.elf). Please update"
     return 1
   fi
   sed $CONFIG -i -e "s/^startx/#startx/"
@@ -2468,7 +2484,7 @@ do_camera() {
     return $RET
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "The camera interface is $STATUS" 20 60 1
+    wt_msgbox "The camera interface is $STATUS"
   fi
 }
 
@@ -2509,7 +2525,7 @@ do_onewire() {
     return $RET
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "The one-wire interface is $STATUS" 20 60 1
+    wt_msgbox "The one-wire interface is $STATUS"
   fi
 }
 
@@ -2570,13 +2586,13 @@ do_legacy() {
     STATUS="Legacy camera support is disabled."
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "$STATUS" 20 60 1
+    wt_msgbox "$STATUS"
   fi
 }
 
 do_gldriver() {
   if [ ! -e /boot${FIRMWARE}/overlays/vc4-kms-v3d.dtbo ]; then
-    whiptail --msgbox "Driver and kernel not present on your system. Please update" 20 60 2
+    wt_msgbox "Driver and kernel not present on your system. Please update"
     return 1
   fi
   for package in gldriver-test libgl1-mesa-dri; do
@@ -2585,7 +2601,7 @@ do_gldriver() {
     fi
   done
   if [ -n "$missing_packages" ] && ! apt-get install $missing_packages; then
-    whiptail --msgbox "Required packages not found, please install: ${missing_packages}" 20 60 2
+    wt_msgbox "Required packages not found, please install: ${missing_packages}"
     return 1
   fi
   GLOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "GL Driver" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
@@ -2614,14 +2630,14 @@ do_gldriver() {
         STATUS="The full KMS GL driver is enabled."
         ;;
       *)
-        whiptail --msgbox "Programmer error, unrecognised GL driver option" 20 60 2
+        wt_msgbox "Programmer error, unrecognised GL driver option"
         return 1
         ;;
     esac
   else
     return 0
   fi
-  whiptail --msgbox "$STATUS" 20 60 1
+  wt_msgbox "$STATUS"
 }
 
 do_xcompmgr() {
@@ -2660,7 +2676,7 @@ EOF
     return $RET
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "The xcompmgr composition manager is $STATUS" 20 60 1
+    wt_msgbox "The xcompmgr composition manager is $STATUS"
   fi
 }
 
@@ -2693,7 +2709,7 @@ do_glamor() {
     return $RET
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "Glamor acceleration is $STATUS" 20 60 1
+    wt_msgbox "Glamor acceleration is $STATUS"
   fi
 }
 
@@ -2754,7 +2770,7 @@ do_wayland() {
         STATUS="Labwc on Wayland"
         ;;
       *)
-        whiptail --msgbox "Programmer error, unrecognised Wayland option" 20 60 2
+        wt_msgbox "Programmer error, unrecognised Wayland option"
         return 1
         ;;
     esac
@@ -2763,7 +2779,7 @@ do_wayland() {
     return 0
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "$STATUS is active" 20 60 1
+    wt_msgbox "$STATUS is active"
   fi
 }
 
@@ -2778,7 +2794,7 @@ do_audioconf() {
       DEFAULT=2
     fi
     if ! is_installed pulseaudio && ! is_installed pipewire-pulse ; then
-      whiptail --msgbox "No audio systems installed" 20 60 1
+      wt_msgbox "No audio systems installed"
       RET=1
     else
       if is_installed pulseaudio ; then
@@ -2824,7 +2840,7 @@ do_audioconf() {
   fi
 
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "$AUDCON is active" 20 60 1
+    wt_msgbox "$AUDCON is active"
   fi
 }
 
@@ -2867,7 +2883,7 @@ do_net_names () {
     return $RET
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "Predictable network interface names are $STATUS" 20 60 1
+    wt_msgbox "Predictable network interface names are $STATUS"
   fi
 }
 
@@ -2888,7 +2904,7 @@ do_audio() {
         IFS="/"
         AUDIO_OUT=$(whiptail --menu "Choose the audio output" 20 60 10 ${list} 3>&1 1>&2 2>&3)
       else
-        whiptail --msgbox "No internal audio devices found" 20 60 1
+        wt_msgbox "No internal audio devices found"
         return 1
       fi
     else
@@ -2934,7 +2950,7 @@ do_audio() {
           n=$(( n+1 ))
         done
         if [ $n -eq 0 ] ; then
-          whiptail --msgbox "No audio devices found" 20 60 1
+          wt_msgbox "No audio devices found"
           false
         else
           oIFS="$IFS"
@@ -3025,9 +3041,9 @@ do_resolution() {
     fi
     if [ "$INTERACTIVE" = True ]; then
       if [ $MODE -eq 0 ] ; then
-        whiptail --msgbox "The resolution is set to default" 20 60 1
+        wt_msgbox "The resolution is set to default"
       else
-        whiptail --msgbox "The resolution is set to $GRS mode $MODE" 20 60 1
+        wt_msgbox "The resolution is set to $GRS mode $MODE"
       fi
     fi
     if [ $MODE -eq 0 ] ; then
@@ -3109,7 +3125,7 @@ Exec=sh -c "if ! (xrandr | grep -q -w connected) ; then /usr/bin/xrandr --fb $FU
 EOF
     fi
     if [ "$INTERACTIVE" = True ]; then
-      whiptail --msgbox "The resolution is set to $FUN" 20 60 1
+      wt_msgbox "The resolution is set to $FUN"
       ASK_TO_REBOOT=1
     fi
   fi
@@ -3137,20 +3153,20 @@ do_wifi_ssid_passphrase() {
 
     if [ -z "$IFACE" ]; then
       if [ "$INTERACTIVE" = True ]; then
-        whiptail --msgbox "No wireless interface found" 20 60
+        wt_msgbox "No wireless interface found"
       fi
       return 1
     fi
 
     if ! wpa_cli -i "$IFACE" status > /dev/null 2>&1; then
       if [ "$INTERACTIVE" = True ]; then
-        whiptail --msgbox "Could not communicate with wpa_supplicant" 20 60
+        wt_msgbox "Could not communicate with wpa_supplicant"
       fi
       return 1
     fi
   elif ! systemctl -q is-active NetworkManager; then
     if [ "$INTERACTIVE" = True ]; then
-      whiptail --msgbox "No supported network connection manager found" 20 60
+      wt_msgbox "No supported network connection manager found"
     fi
     return 1
   fi
@@ -3160,7 +3176,7 @@ do_wifi_ssid_passphrase() {
     if ! SSID=$(whiptail --inputbox "Please enter SSID" 20 60 3>&1 1>&2 2>&3); then
       return 0
     elif [ -z "$SSID" ]; then
-      whiptail --msgbox "SSID cannot be empty. Please try again." 20 60
+      wt_msgbox "SSID cannot be empty. Please try again."
     fi
   done
 
@@ -3224,7 +3240,7 @@ do_wifi_ssid_passphrase() {
     else
       wpa_cli -i "$IFACE" remove_network "$ID" > /dev/null 2>&1
       if [ "$INTERACTIVE" = True ]; then
-        whiptail --msgbox "Failed to set SSID or passphrase" 20 60
+        wt_msgbox "Failed to set SSID or passphrase"
       fi
     fi
     wpa_cli -i "$IFACE" save_config > /dev/null 2>&1
@@ -3355,7 +3371,7 @@ is_uname_current() {
 enable_overlayfs() {
   if [ "$(awk '/MemTotal/{print $2; exit}' /proc/meminfo)" -le 262144 ]; then
     if [ "$INTERACTIVE" = True ]; then
-      whiptail --msgbox "At least 512MB of RAM is recommended for overlay filesystem" 20 60 1
+      wt_msgbox "At least 512MB of RAM is recommended for overlay filesystem"
     else
       echo "At least 512MB of RAM is recommended for overlay filesystem"
     fi
@@ -3429,7 +3445,7 @@ do_overlayfs() {
   STATUS="disabled"
 
   if [ "$INTERACTIVE" = True ] && ! is_uname_current; then
-    whiptail --msgbox "Could not find modules for the running kernel ($(uname -r))." 20 60 1
+    wt_msgbox "Could not find modules for the running kernel ($(uname -r))."
     return 1
   fi
 
@@ -3464,7 +3480,7 @@ do_overlayfs() {
     fi
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "The overlay file system is $STATUS." 20 60 1
+    wt_msgbox "The overlay file system is $STATUS."
   fi
   if [ $(get_overlay_now) -eq 0 ] ; then
     if [ $(get_bootro_conf) -eq 0 ] ; then
@@ -3473,7 +3489,7 @@ do_overlayfs() {
       BPRO="writable"
     fi
     if [ "$INTERACTIVE" = True ]; then
-      whiptail --msgbox "The boot partition is currently $BPRO. This cannot be changed while an overlay file system is enabled." 20 60 1
+      wt_msgbox "The boot partition is currently $BPRO. This cannot be changed while an overlay file system is enabled."
     fi
   else
     DEFAULT=--defaultno
@@ -3510,7 +3526,7 @@ do_overlayfs() {
       fi
     fi
     if [ "$INTERACTIVE" = True ]; then
-      whiptail --msgbox "The boot partition is $STATUS." 20 60 1
+      wt_msgbox "The boot partition is $STATUS."
     fi
   fi
 }
@@ -3573,7 +3589,7 @@ do_proxy() {
     fi
   done
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "Proxy settings $STATUS" 20 60 1
+    wt_msgbox "Proxy settings $STATUS"
   fi
 }
 
@@ -3609,7 +3625,7 @@ do_usb_current() {
 
 
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "The USB current limit is $STATUS" 20 60 1
+    wt_msgbox "The USB current limit is $STATUS"
   fi
 }
 
@@ -3700,7 +3716,7 @@ EOF
       ;;
   esac
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "The onscreen keyboard is $STATUS" 20 60 1
+    wt_msgbox "The onscreen keyboard is $STATUS"
   fi
 }
 
@@ -3740,7 +3756,7 @@ do_squeek_output() {
     $PREFIX sbout > /dev/null 2> /dev/null &
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --msgbox "The onscreen keyboard is on $OPT" 20 60 1
+    wt_msgbox "The onscreen keyboard is on $OPT"
   fi
 }
 
@@ -3849,8 +3865,8 @@ do_system_menu() {
       S7\ *) do_leds ;;
       S8\ *) do_browser ;;
       S9\ *) do_journald_storage ;;
-      *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
-    esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
+      *) wt_msgbox "Programmer error: unrecognized option" ;;
+    esac || wt_msgbox "There was an error running option $FUN"
   fi
 }
 
@@ -3909,8 +3925,8 @@ do_display_menu() {
       D5\ *) do_pi4video ;;
       D6\ *) do_squeekboard ;;
       D7\ *) do_squeek_output ;;
-      *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
-    esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
+      *) wt_msgbox "Programmer error: unrecognized option" ;;
+    esac || wt_msgbox "There was an error running option $FUN"
   fi
 }
 
@@ -3944,8 +3960,8 @@ do_interface_menu() {
       I6\ *) if is_pifive ; then do_serial_pi5 ; else do_serial ; fi ;;
       I7\ *) do_onewire ;;
       I8\ *) do_rgpio ;;
-      *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
-    esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
+      *) wt_msgbox "Programmer error: unrecognized option" ;;
+    esac || wt_msgbox "There was an error running option $FUN"
   fi
 }
 
@@ -3976,8 +3992,8 @@ do_performance_menu() {
       P2\ *) do_overlayfs ;;
       P3\ *) do_fan ;;
       P4\ *) do_usb_current ;;
-      *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
-    esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
+      *) wt_msgbox "Programmer error: unrecognized option" ;;
+    esac || wt_msgbox "There was an error running option $FUN"
   fi
 }
 
@@ -3997,8 +4013,8 @@ do_internationalisation_menu() {
       L2\ *) do_change_timezone ;;
       L3\ *) do_configure_keyboard ;;
       L4\ *) do_wifi_country ;;
-      *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
-    esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
+      *) wt_msgbox "Programmer error: unrecognized option" ;;
+    esac || wt_msgbox "There was an error running option $FUN"
   fi
 }
 
@@ -4064,8 +4080,8 @@ do_advanced_menu() {
       A9\ *) do_network_install_ui ;;
       A10\ *) do_libliftoff ;;
       A11\ *) do_power_off_on_halt ;;
-      *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
-    esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
+      *) wt_msgbox "Programmer error: unrecognized option" ;;
+    esac || wt_msgbox "There was an error running option $FUN"
   fi
 }
 
@@ -4089,8 +4105,8 @@ do_proxy_menu() {
       P4\ *) do_proxy ftp ;;
       P5\ *) do_proxy rsync ;;
       P6\ *) do_proxy no;;
-      *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
-    esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
+      *) wt_msgbox "Programmer error: unrecognized option" ;;
+    esac || wt_msgbox "There was an error running option $FUN"
   fi
 }
 
@@ -4150,8 +4166,8 @@ if [ "$INTERACTIVE" = True ]; then
         6\ *) do_advanced_menu ;;
         8\ *) do_update ;;
         9\ *) do_about ;;
-        *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
-      esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
+        *) wt_msgbox "Programmer error: unrecognized option" ;;
+      esac || wt_msgbox "There was an error running option $FUN"
     else
       exit 1
     fi

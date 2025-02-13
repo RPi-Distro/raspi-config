@@ -803,7 +803,7 @@ update_labwc_keyboard() {
     if grep -q XKB_DEFAULT_OPTIONS $UFILE ; then sed -i s/XKB_DEFAULT_OPTIONS.*/XKB_DEFAULT_OPTIONS=$OPTIONS/ $UFILE ; else echo XKB_DEFAULT_OPTIONS=$OPTIONS >> $UFILE ; fi
   fi
   if is_labwc ; then
-    kill -HUP `pgrep -x labwc`  # does the equivalent of labwc --reconfigure, but works as sudo...
+    kill -HUP $(pgrep -x labwc)  # does the equivalent of labwc --reconfigure, but works as sudo...
   fi
 }
 
@@ -822,7 +822,7 @@ update_squeekboard() {
   else
     GSET=$GSET"+$VARIANT1')"
   fi
-  if ! [ -z "$LAYOUT2" ] ; then
+  if [ -n "$LAYOUT2" ] ; then
     GSET=$GSET", ('xkb', '$LAYOUT2"
     if [ -z "$VARIANT2" ] ; then
       GSET=$GSET"')"
@@ -1920,7 +1920,7 @@ do_fan() {
 }
 
 get_browser() {
-  echo $(update-alternatives --display x-www-browser | grep currently | cut -d " " -f 7 | cut -d / -f 4)
+  update-alternatives --display x-www-browser | grep currently | cut -d " " -f 7 | cut -d / -f 4
 }
 
 do_browser() {
@@ -1980,7 +1980,7 @@ do_journald_storage() {
       *) JSTRING=""
       ;;
     esac
-    REPLACEMENT="$([ ! -z $JSTRING ] && echo "Storage=$JSTRING" || echo "#Storage=auto")"
+    REPLACEMENT="$([ -n "$JSTRING" ] && echo "Storage=$JSTRING" || echo "#Storage=auto")"
     sed --in-place -E "s/^#?Storage=.*/${REPLACEMENT}/" /etc/systemd/journald.conf
     if [ "$INTERACTIVE" = True ]; then
       wt_msgbox "Logging location set to ${JSTRING:-default}"
@@ -3302,8 +3302,7 @@ do_wifi_ssid_passphrase() {
 do_finish() {
   disable_raspi_config_at_boot
   if [ $ASK_TO_REBOOT -eq 1 ]; then
-    wt_yesno "Would you like to reboot now?"
-    if [ $? -eq 0 ]; then # yes
+    if wt_yesno "Would you like to reboot now?" ; then # yes
       sync
       reboot
     fi
@@ -3376,7 +3375,7 @@ do_apply_os_config() {
     do_change_locale "$DEBLANGUAGE"
   fi
 
-  if [ -n "$NOOBSKEYBOARD" -a "$NOOBSKEYBOARD" != "gb" ]; then
+  if [ -n "$NOOBSKEYBOARD" ] && [ "$NOOBSKEYBOARD" != "gb" ]; then
     printf "Setting keyboard layout to %s based on os_config.json from NOOBS. May take a while\n" "$NOOBSKEYBOARD"
     do_configure_keyboard "$NOOBSKEYBOARD"
   fi
@@ -3761,7 +3760,7 @@ EOF
 
 get_squeek_output (){
   if [ -e /usr/share/squeekboard/output ] ; then
-    echo `grep SQUEEKBOARD_PREFERRED_OUTPUT /usr/share/squeekboard/output | cut -d = -f 2`
+    grep SQUEEKBOARD_PREFERRED_OUTPUT /usr/share/squeekboard/output | cut -d = -f 2
   else
     echo ""
   fi
@@ -4165,7 +4164,7 @@ if [ "$INTERACTIVE" = True ]; then
         if [ $MEMSIZE -lt 1024 ]; then
           FMEMSIZE="${MEMSIZE}MB"
         else
-          FMEMSIZE="$(expr $MEMSIZE / 1024)GB"
+          FMEMSIZE="$((MEMSIZE / 1024))GB"
         fi
         MENU_BACKTITLE="$(cat /proc/device-tree/model), ${FMEMSIZE}"
       fi

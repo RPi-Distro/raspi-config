@@ -30,21 +30,31 @@ LABWCENV_FILE="$HOMEDIR/.config/labwc/environment"
 LABWCAST_FILE="$HOMEDIR/.config/labwc/autostart"
 
 is_pi () {
-  ARCH=$(dpkg --print-architecture)
-  if [ "$ARCH" = "armhf" ] || [ "$ARCH" = "arm64" ] ; then
-    return 0
-  else
-    return 1
+  if [ -z "$IS_PI" ]; then
+    if [ -z "$ARCH" ]; then
+      ARCH=$(dpkg --print-architecture)
+    fi
+    if [ "$ARCH" = "armhf" ] || [ "$ARCH" = "arm64" ] ; then
+      IS_PI=0
+    else
+      IS_PI=1
+    fi
   fi
+  return $IS_PI
 }
 
 is_64bit () {
-  ARCH=$(dpkg --print-architecture)
-  if [ "$ARCH" = "arm64" ] ; then
-    return 0
-  else
-    return 1
+  if [ -z "$IS_64BIT" ]; then
+    if [ -z "$ARCH" ]; then
+      ARCH=$(dpkg --print-architecture)
+    fi
+    if [ "$ARCH" = "arm64" ] ; then
+      IS_64BIT=0
+    else
+      IS_64BIT=1
+    fi
   fi
+  return $IS_64BIT
 }
 
 if is_pi ; then
@@ -56,79 +66,109 @@ else
   CMDLINE=/proc/cmdline
 fi
 
-# tests for Pi 1, 2 and 0 all test for specific boards...
+# tests for Pi 1, 2, 0 and CM5 all test for specific boards...
 
 is_pione() {
-  if grep -q "^Revision\s*:\s*00[0-9a-fA-F][0-9a-fA-F]$" /proc/cpuinfo; then
-    return 0
-  elif grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]0[0-36][0-9a-fA-F]$" /proc/cpuinfo ; then
-    return 0
-  else
-    return 1
+  if [ -z "$IS_PIONE" ]; then
+    if grep -q "^Revision\s*:\s*00[0-9a-fA-F][0-9a-fA-F]$" /proc/cpuinfo; then
+      IS_PIONE=0
+    elif grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]0[0-36][0-9a-fA-F]$" /proc/cpuinfo ; then
+      IS_PIONE=0
+    else
+      IS_PIONE=1
+    fi
   fi
+  return $IS_PIONE
 }
 
 is_pitwo() {
-  grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]04[0-9a-fA-F]$" /proc/cpuinfo
-  return $?
+  if [ -z "$IS_PITWO" ]; then
+    grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]04[0-9a-fA-F]$" /proc/cpuinfo
+    IS_PITWO=$?
+  fi
+  return $IS_PITWO
 }
 
 is_pizero() {
-  grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]0[9cC][0-9a-fA-F]$" /proc/cpuinfo
-  return $?
-}
-
-# ...while tests for Pi 3 and 4 just test processor type, so will also find CM3, CM4, Zero 2 etc.
-
-is_pithree() {
-  grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F]2[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]$" /proc/cpuinfo
-  return $?
-}
-
-is_pifour() {
-  grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F]3[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]$" /proc/cpuinfo
-  return $?
-}
-
-is_pifive() {
-  grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F]4[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]$" /proc/cpuinfo
-  return $?
+  if [ -z "$IS_PIZERO" ]; then
+    grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]0[9cC][0-9a-fA-F]$" /proc/cpuinfo
+    IS_PIZERO=$?
+  fi
+  return $IS_PIZERO
 }
 
 is_cmfive() {
-  grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]1[8aA][0-9a-fA-F]$" /proc/cpuinfo
-  return $?
+  if [ -z "$IS_CMFIVE" ]; then
+    grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]1[8aA][0-9a-fA-F]$" /proc/cpuinfo
+    IS_CMFIVE=$?
+  fi
+  return $IS_CMFIVE
+}
+
+# ...while tests for Pi 3, 4 and 5 just test processor type, so will also find CM3, CM4, Zero 2 etc.
+
+is_pithree() {
+  if [ -z "$IS_PITHREE" ]; then
+    grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F]2[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]$" /proc/cpuinfo
+    IS_PITHREE=$?
+  fi
+  return $IS_PITHREE
+}
+
+is_pifour() {
+  if [ -z "$IS_PIFOUR" ]; then
+    grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F]3[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]$" /proc/cpuinfo
+    IS_PIFOUR=$?
+  fi
+  return $IS_PIFOUR
+}
+
+is_pifive() {
+  if [ -z "$IS_PIFIVE" ]; then
+    grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F]4[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]$" /proc/cpuinfo
+    IS_PIFIVE=$?
+  fi
+  return $IS_PIFIVE
 }
 
 get_pi_type() {
-  if is_pione; then
-    echo 1
-  elif is_pitwo; then
-    echo 2
-  elif is_pithree; then
-    echo 3
-  elif is_pifour; then
-    echo 4
-  elif is_pifive; then
-    echo 5
-  elif is_pizero; then
-    echo 0
-  else
-    echo -1
+  if [ -z "$PI_TYPE" ]; then
+    if is_pione; then
+      GET_PI_TYPE=1
+    elif is_pitwo; then
+      GET_PI_TYPE=2
+    elif is_pithree; then
+      GET_PI_TYPE=3
+    elif is_pifour; then
+      GET_PI_TYPE=4
+    elif is_pifive; then
+      GET_PI_TYPE=5
+    elif is_pizero; then
+      GET_PI_TYPE=0
+    else
+      GET_PI_TYPE=-1
+    fi
   fi
+  echo $GET_PI_TYPE
 }
 
 gpu_has_mmu() {
-  if is_pifour || is_pifive ; then
-    return 0
-  else
-    return 1
+  if [ -z "$HAS_MMU" ]; then
+    if is_pifour || is_pifive ; then
+      GPU_HAS_MMU=0
+    else
+      GPU_HAS_MMU=1
+    fi
   fi
+  return $GPU_HAS_MMU
 }
 
 is_live() {
-  grep -q "boot=live" $CMDLINE
-  return $?
+  if [ -z "$IS_LIVE" ]; then
+    grep -q "boot=live" $CMDLINE
+    IS_LIVE=$?
+  fi
+  return $IS_LIVE
 }
 
 is_ssh() {
@@ -149,31 +189,43 @@ is_pulseaudio() {
 }
 
 is_wayfire() {
-  pgrep wayfire > /dev/null
-  return $?
+  if [ -z "$IS_WAYFIRE" ]; then
+    pgrep wayfire > /dev/null
+    IS_WAYFIRE=$?
+  fi
+  return $IS_WAYFIRE
 }
 
 is_labwc() {
-  pgrep labwc > /dev/null
-  return $?
+  if [ -z "$IS_LABWC" ]; then
+    pgrep labwc > /dev/null
+    IS_LABWC=$?
+  fi
+  return $IS_LABWC
 }
 
 is_wayland() {
-  if is_wayfire; then
-    return 0
-  elif is_labwc; then
-    return 0
-  else
-    return 1
+  if [ -z "$IS_WAYLAND" ]; then
+    if is_wayfire; then
+      IS_WAYLAND=0
+    elif is_labwc; then
+      IS_WAYLAND=0
+    else
+      IS_WAYLAND=1
+    fi
   fi
+  return $IS_WAYLAND
 }
 
 has_analog() {
-  if [ $(get_leds) -eq -1 ] ; then
-    return 0
-  else
-    return 1
+  if [ -z "$HAS_ANALOG" ]; then
+    if [ $(get_leds) -eq -1 ] ; then
+      HAS_ANALOG=0
+    else
+      HAS_ANALOG=1
+    fi
   fi
+  return $HAS_ANALOG
 }
 
 is_installed() {
@@ -185,8 +237,10 @@ is_installed() {
 }
 
 deb_ver () {
-  ver=$(cut -d . -f 1 < /etc/debian_version)
-  echo $ver
+  if [ -z "$DEB_VER" ]; then
+    DEB_VER=$(cut -d . -f 1 < /etc/debian_version)
+  fi
+  echo $DEB_VER
 }
 
 get_package_version() {
@@ -4046,13 +4100,16 @@ if [ "$INTERACTIVE" = True ]; then
   done
   while true; do
     if is_pi ; then
-      MEMSIZE=$(vcgencmd get_config total_mem|cut -d= -f2)
-      if [ $MEMSIZE -lt 1024 ]; then
-        FMEMSIZE="${MEMSIZE}MB"
-      else
-        FMEMSIZE="$(expr $MEMSIZE / 1024)GB"
+      if [ -z "$MENU_BACKTITLE" ]; then
+        MEMSIZE=$(vcgencmd get_config total_mem|cut -d= -f2)
+        if [ $MEMSIZE -lt 1024 ]; then
+          FMEMSIZE="${MEMSIZE}MB"
+        else
+          FMEMSIZE="$(expr $MEMSIZE / 1024)GB"
+        fi
+        MENU_BACKTITLE="$(cat /proc/device-tree/model), ${FMEMSIZE}"
       fi
-      FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --backtitle "$(cat /proc/device-tree/model), ${FMEMSIZE}" --menu "Setup Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Finish --ok-button Select \
+      FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --backtitle "$MENU_BACKTITLE" --menu "Setup Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Finish --ok-button Select \
         "1 System Options" "Configure system settings" \
         "2 Display Options" "Configure display settings" \
         "3 Interface Options" "Configure connections to peripherals" \

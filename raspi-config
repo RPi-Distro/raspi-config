@@ -67,7 +67,7 @@ else
   CMDLINE=/proc/cmdline
 fi
 
-# tests for Pi 1, 2, 0 and CM5 all test for specific boards...
+# tests for Pi 1, 2, 0, CM5 and x00 all test for specific boards...
 
 is_pione() {
   if [ -z "$IS_PIONE" ]; then
@@ -104,6 +104,14 @@ is_cmfive() {
     IS_CMFIVE=$?
   fi
   return $IS_CMFIVE
+}
+
+is_pihundred() {
+  if [ -z "$IS_PIHUNDRED" ]; then
+    grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]1[39][0-9a-fA-F]$" /proc/cpuinfo
+    IS_PIHUNDRED=$?
+  fi
+  return $IS_PIHUNDRED
 }
 
 # ...while tests for Pi 3, 4 and 5 just test processor type, so will also find CM3, CM4, Zero 2 etc.
@@ -3909,8 +3917,10 @@ do_display_menu() {
   set -- "$@" \
     "D2 Screen Blanking" "Enable/disable screen blanking"
   if is_pi ; then
-    set -- "$@" \
-      "D4 Composite" "Enable/disable composite output"
+    if ! is_pihundred ; then
+      set -- "$@" \
+        "D4 Composite" "Enable/disable composite output"
+    fi
     if is_pifour; then
       set -- "$@" \
         "D5 4Kp60 HDMI" "Enable 4Kp60 resolution on HDMI0"

@@ -1958,7 +1958,7 @@ get_bootloader_filename() {
    done
    if [ $EXACT_MATCH != 1 ]; then
       if [ "$INTERACTIVE" = True ]; then
-         whiptail --yesno "Current EEPROM version $(date -d $CURDATE +%Y-%m-%d) or newer not found.\n\nTry updating the rpi-eeprom APT package.\n\nInstall latest local $(basename $FILNAME) anyway?" 20 70 3
+         whiptail --yesno "Current EEPROM version $(date -d $CURDATE +%Y-%m-%d) not found.\n\nUpdates are available via the rpi-eeprom APT package.\n\nInstall latest local version $(basename $FILNAME)?" 20 70 3
          DEFAULTS=$?
          if [ "$DEFAULTS" -ne 0 ]; then
             FILNAME="none" # no

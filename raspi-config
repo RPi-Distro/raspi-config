@@ -2117,7 +2117,7 @@ do_libliftoff() {
   if [ "$INTERACTIVE" = True ]; then
     RET=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "libliftoff Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
         "L1 Disable" "Disable libliftoff hardware overlays" \
-        "L2 Enable" "Enable libliftoff hardware overlays (experimental)" \
+        "L2 Enable" "Enable libliftoff hardware overlays" \
         3>&1 1>&2 2>&3)
   else
     RET=$1

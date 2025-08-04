@@ -4102,12 +4102,13 @@ do_advanced_menu() {
       "A2 Network Interface Names" "Enable/disable predictable network i/f names" \
       "A3 Network Proxy Settings" "Configure network proxy settings" \
       "A4 Boot Order" "Choose boot device priority (SD/net/USB/NVMe)" \
-      "A5 Beta Access" "Select beta or release software repository" \
-      "A6 Wayland" "Switch between X and Wayland backends" \
-      "A7 Audio Config" "Set audio control system" \
-      "A8 PCIe Speed" "Set PCIe x1 port speed" \
-      "A9 Network Install UI" "Select display of bootloader network install UI" \
-      "A10 Libliftoff" "Enable/disable libliftoff hardware overlays" \
+      "A5 Bootloader Version" "Selects the latest or the factory default bootloader" \
+      "A6 Beta Access" "Select beta or release software repository" \
+      "A7 Wayland" "Switch between X and Wayland backends" \
+      "A8 Audio Config" "Set audio control system" \
+      "A9 PCIe Speed" "Set PCIe x1 port speed" \
+      "A10 Network Install UI" "Select display of bootloader network install UI" \
+      "A11 Libliftoff" "Enable/disable libliftoff hardware overlays" \
       "A11 Shutdown Behaviour" "Configure shutdown behavior" \
       3>&1 1>&2 2>&3)
   elif is_pifour ; then
@@ -4116,9 +4117,10 @@ do_advanced_menu() {
       "A2 Network Interface Names" "Enable/disable predictable network i/f names" \
       "A3 Network Proxy Settings" "Configure network proxy settings" \
       "A4 Boot Order" "Choose boot device priority (SD/net/USB/NVMe)" \
-      "A5 Beta Access" "Select beta or release software repository" \
-      "A6 Wayland" "Switch between X and Wayland backends" \
-      "A7 Audio Config" "Set audio control system" \
+      "A5 Bootloader Version" "Selects the latest or the factory default bootloader" \
+      "A6 Beta Access" "Select beta or release software repository" \
+      "A7 Wayland" "Switch between X and Wayland backends" \
+      "A8 Audio Config" "Set audio control system" \
       "A9 Network Install UI" "Select display of bootloader network install UI" \
       "A10 Libliftoff" "Enable/disable libliftoff hardware overlays" \
       "A11 Shutdown Behaviour" "Configure shutdown behavior" \
@@ -4151,13 +4153,14 @@ do_advanced_menu() {
       A2\ *) do_net_names ;;
       A3\ *) do_proxy_menu ;;
       A4\ *) do_boot_order ;;
-      A5\ *) do_beta_mode ;;
-      A6\ *) do_wayland ;;
-      A7\ *) do_audioconf ;;
-      A8\ *) do_pci ;;
-      A9\ *) do_network_install_ui ;;
-      A10\ *) do_libliftoff ;;
-      A11\ *) do_power_off_on_halt ;;
+      A5\ *) do_boot_rom ;;
+      A6\ *) do_beta_mode ;;
+      A7\ *) do_wayland ;;
+      A8\ *) do_audioconf ;;
+      A9\ *) do_pci ;;
+      A10\ *) do_network_install_ui ;;
+      A11\ *) do_libliftoff ;;
+      A12\ *) do_power_off_on_halt ;;
       *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
   fi

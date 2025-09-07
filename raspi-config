@@ -2234,7 +2234,7 @@ do_boot_order() {
     BOOTOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Boot Device Order" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
       "B1 SD Card Boot " "Boot from SD Card before trying NVMe and then USB (RECOMMENDED)" \
       "B2 NVMe/USB Boot" "Boot from NVMe before trying USB and then SD Card" \
-      "B3 Network Boot " "Boot from Network unless override by SD Card" \
+      "B3 Network Boot " "Boot from Network unless overridden by SD Card" \
       3>&1 1>&2 2>&3)
   else
     BOOTOPT=$1

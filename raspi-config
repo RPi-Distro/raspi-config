@@ -2093,7 +2093,7 @@ do_network_install_ui() {
   if [ "$INTERACTIVE" = True ]; then
     BOOTOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Bootloader network install UI" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
       "B1 Always" "Always display the UI for a few seconds after power on." \
-      "B2 On demand" "Display the UI if the SHIFT key is presssed or if an error occurs." \
+      "B2 On demand" "Display the UI if the SHIFT key is pressed or if an error occurs." \
       3>&1 1>&2 2>&3)
   else
     BOOTOPT=$1

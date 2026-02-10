@@ -2181,6 +2181,68 @@ do_network_install_ui() {
   fi
  }
 
+get_ab_firmware() {
+  SPIDEV="spi10"
+  if grep -q "^dtoverlay=no$SPIDEV" "$CONFIG" ; then
+    echo 0
+  else
+    echo 1
+  fi
+}
+
+do_ab_firmware() {
+  SPIDEV="spi10"
+  CURRENT=0
+  if [ "$(get_ab_firmware)" -eq 0 ]; then
+    CURRENT="B1 Enable"
+  else
+    CURRENT="B2 Disable"
+  fi
+  if [ "$INTERACTIVE" = True ]; then
+    RET=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --default-item "$CURRENT" \
+      --menu "AB firmware updates" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+      "B1 Enable" "Enable AB firmware updates (warning: Flashrom cannot be used for firmware updates)" \
+      "B2 Disable" "Disable AB firmware updates" \
+      3>&1 1>&2 2>&3)
+  else
+    RET=$1
+    true
+  fi
+  if [ $? -eq 0 ]; then
+    case "$RET" in
+      B1*)
+        if [ "$CURRENT" = "B2 Disable" ]; then
+          ASK_TO_REBOOT=1
+        fi
+        sed "$CONFIG" -i -e "s/^#dtoverlay=no$SPIDEV.*/dtoverlay=no$SPIDEV/"
+        if ! grep -q "^dtoverlay=no$SPIDEV" "$CONFIG"; then
+          if ! tail -1 "$CONFIG" | grep -q "\\[all\\]" ; then
+            printf "[all]\n" >> "$CONFIG"
+          fi
+          printf "dtoverlay=no$SPIDEV\n" >> "$CONFIG"
+        fi
+        STATUS=enabled
+        ;;
+      B2*)
+        if [ "$CURRENT" = "B1 Enable" ]; then
+          ASK_TO_REBOOT=1
+        fi
+        sed "$CONFIG" -i -e "s/^dtoverlay=no$SPIDEV.*/#dtoverlay=no$SPIDEV/"
+        STATUS=disabled
+        ;;
+      *)
+        whiptail --msgbox "Programmer error, unrecognised boot option" 20 60 2
+        return 1
+        ;;
+    esac
+  else
+    return 0
+  fi
+  if [ "$INTERACTIVE" = True ]; then
+    whiptail --msgbox "AB firmware updates are $STATUS" 20 60 1
+  fi
+}
+
 # shellcheck disable=SC2120
 do_power_off_on_halt() {
   if [ "$INTERACTIVE" = True ]; then
@@ -4152,6 +4214,7 @@ do_advanced_menu() {
       "A11 Logging" "Set storage location for logs" \
       "A12 WLAN Power Save" "Enable/disable WLAN power saving" \
       "A13 Link-local Fallback" "Enable/disable link-local address fallback" \
+      "A14 AB Firmware" "Enable/disable AB firmware updates" \
       3>&1 1>&2 2>&3)
   elif is_pifour ; then
     FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Advanced Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
@@ -4208,6 +4271,7 @@ do_advanced_menu() {
       A11\ *) do_journald_storage ;;
       A12\ *) do_wifi_power_save ;;
       A13\ *) do_link_local_fallback ;;
+      A14\ *) do_ab_firmware ;;
       *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
   fi

@@ -207,6 +207,14 @@ has_analog() {
   fi
 }
 
+has_composite_video() {
+  if is_pihundred || is_cmfive; then
+    return 1
+  else
+    return 0
+  fi
+}
+
 is_installed() {
   if [ "$(dpkg -l "$1" 2> /dev/null | tail -n 1 | cut -d ' ' -f 1)" != "ii" ]; then
     return 1
@@ -4033,37 +4041,71 @@ do_display_menu() {
   if is_pi ; then
     if is_wayland; then
       if is_pifour; then
-        FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-          "D2 Screen Blanking" "Enable/disable screen blanking" \
-          "D4 Composite" "Enable/disable composite output" \
-          "D5 4Kp60 HDMI" "Enable 4Kp60 resolution on HDMI0" \
-          "D6 Onscreen Keyboard" "Enable on-screen keyboard" \
-          "D7 Keyboard Output" "Select monitor used for on-screen keyboard" \
-          3>&1 1>&2 2>&3)
+        if has_composite_video; then
+          FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+            "D2 Screen Blanking" "Enable/disable screen blanking" \
+            "D4 Composite" "Enable/disable composite output" \
+            "D5 4Kp60 HDMI" "Enable 4Kp60 resolution on HDMI0" \
+            "D6 Onscreen Keyboard" "Enable on-screen keyboard" \
+            "D7 Keyboard Output" "Select monitor used for on-screen keyboard" \
+            3>&1 1>&2 2>&3)
+        else
+          FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+            "D2 Screen Blanking" "Enable/disable screen blanking" \
+            "D5 4Kp60 HDMI" "Enable 4Kp60 resolution on HDMI0" \
+            "D6 Onscreen Keyboard" "Enable on-screen keyboard" \
+            "D7 Keyboard Output" "Select monitor used for on-screen keyboard" \
+            3>&1 1>&2 2>&3)
+        fi
       else
-        FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-          "D2 Screen Blanking" "Enable/disable screen blanking" \
-          "D4 Composite" "Enable/disable composite output" \
-          "D6 Onscreen Keyboard" "Enable on-screen keyboard" \
-          "D7 Keyboard Output" "Select monitor used for on-screen keyboard" \
-          3>&1 1>&2 2>&3)
+        if has_composite_video; then
+          FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+            "D2 Screen Blanking" "Enable/disable screen blanking" \
+            "D4 Composite" "Enable/disable composite output" \
+            "D6 Onscreen Keyboard" "Enable on-screen keyboard" \
+            "D7 Keyboard Output" "Select monitor used for on-screen keyboard" \
+            3>&1 1>&2 2>&3)
+        else
+          FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+            "D2 Screen Blanking" "Enable/disable screen blanking" \
+            "D6 Onscreen Keyboard" "Enable on-screen keyboard" \
+            "D7 Keyboard Output" "Select monitor used for on-screen keyboard" \
+            3>&1 1>&2 2>&3)
+        fi
       fi
     else
       if is_pifour; then
-        FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-          "D1 Underscan" "Remove black border around screen" \
-          "D2 Screen Blanking" "Enable/disable screen blanking" \
-          "D3 VNC Resolution" "Set resolution for headless use" \
-          "D4 Composite" "Enable/disable composite output" \
-          "D5 4Kp60 HDMI" "Enable 4Kp60 resolution on HDMI0" \
-          3>&1 1>&2 2>&3)
+        if has_composite_video; then
+          FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+            "D1 Underscan" "Remove black border around screen" \
+            "D2 Screen Blanking" "Enable/disable screen blanking" \
+            "D3 VNC Resolution" "Set resolution for headless use" \
+            "D4 Composite" "Enable/disable composite output" \
+            "D5 4Kp60 HDMI" "Enable 4Kp60 resolution on HDMI0" \
+            3>&1 1>&2 2>&3)
+        else
+          FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+            "D1 Underscan" "Remove black border around screen" \
+            "D2 Screen Blanking" "Enable/disable screen blanking" \
+            "D3 VNC Resolution" "Set resolution for headless use" \
+            "D5 4Kp60 HDMI" "Enable 4Kp60 resolution on HDMI0" \
+            3>&1 1>&2 2>&3)
+        fi
       else
-        FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-          "D1 Underscan" "Remove black border around screen" \
-          "D2 Screen Blanking" "Enable/disable screen blanking" \
-          "D3 VNC Resolution" "Set resolution for headless use" \
-          "D4 Composite" "Enable/disable composite output" \
-          3>&1 1>&2 2>&3)
+        if has_composite_video; then
+          FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+            "D1 Underscan" "Remove black border around screen" \
+            "D2 Screen Blanking" "Enable/disable screen blanking" \
+            "D3 VNC Resolution" "Set resolution for headless use" \
+            "D4 Composite" "Enable/disable composite output" \
+            3>&1 1>&2 2>&3)
+        else
+          FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+            "D1 Underscan" "Remove black border around screen" \
+            "D2 Screen Blanking" "Enable/disable screen blanking" \
+            "D3 VNC Resolution" "Set resolution for headless use" \
+            3>&1 1>&2 2>&3)
+        fi
       fi
     fi
   else

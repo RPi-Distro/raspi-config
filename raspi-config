@@ -57,7 +57,7 @@ else
   CMDLINE=/proc/cmdline
 fi
 
-# tests for Pi 1, 2, 0, CM5 and 500 all test for specific boards...
+# tests for Pi 1, 2, 0, 02, CM5 and 500 (and x00 and CMx) all test for specific boards...
 
 is_pione() {
   # matches 1A, 1B, 1A+, 1B+, CM1
@@ -80,6 +80,11 @@ is_pizero() {
   return $?
 }
 
+is_pizero2() {
+  grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]12[0-9a-fA-F]$" /proc/cpuinfo
+  return $?
+}
+
 is_cmfive() {
   grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]1[8aA][0-9a-fA-F]$" /proc/cpuinfo
   return $?
@@ -88,6 +93,25 @@ is_cmfive() {
 is_pi500() {
   grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]19[0-9a-fA-F]$" /proc/cpuinfo
   return $?
+}
+
+is_pihundred() {
+  # matches Pi400, Pi500, Pi500+
+  grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]1[39][0-9a-fA-F]$" /proc/cpuinfo
+  return $?
+}
+
+is_cm() {
+  # matches CM1, CM3, CM3+, CM4, CM4S, CM5, CM5Lite, CM0
+  if grep -q "^Revision\s*:\s*001[14]$" /proc/cpuinfo; then
+    return 0
+  elif grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]0[6aA][0-9a-fA-F]$" /proc/cpuinfo; then
+    return 0
+  elif grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]1[0458aAbB][0-9a-fA-F]$" /proc/cpuinfo; then
+    return 0
+  else
+    return 1
+  fi
 }
 
 # ...while tests for Pi 3, 4 and 5 just test processor type, so will also find CM3, CM4, Zero 2, 500, etc.

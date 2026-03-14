@@ -4170,23 +4170,26 @@ do_interface_menu() {
 }
 
 do_performance_menu() {
-  case "$(get_pi_type)" in
-    [03]) FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Performance Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-          "P2 Overlay File System" "Enable/disable read-only file system" \
-          3>&1 1>&2 2>&3) ;;
-    [12]) FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Performance Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-          "P1 Overclock" "Configure CPU overclocking" \
-          "P2 Overlay File System" "Enable/disable read-only file system" \
-          3>&1 1>&2 2>&3) ;;
-    4) FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Performance Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-          "P2 Overlay File System" "Enable/disable read-only file system" \
-          "P3 Fan" "Set behaviour of GPIO case fan" \
-          3>&1 1>&2 2>&3) ;;
-    *) FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Performance Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-          "P2 Overlay File System" "Enable/disable read-only file system" \
-          "P4 USB Current" "Set USB current limit" \
-          3>&1 1>&2 2>&3) ;;
-  esac
+  if is_pione || is_pitwo; then
+    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Performance Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+      "P1 Overclock" "Configure CPU overclocking" \
+      "P2 Overlay File System" "Enable/disable read-only file system" \
+      3>&1 1>&2 2>&3)
+  elif is_pifour && ! is_pihundred; then
+    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Performance Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+      "P2 Overlay File System" "Enable/disable read-only file system" \
+      "P3 Fan" "Set behaviour of GPIO case fan" \
+      3>&1 1>&2 2>&3)
+  elif is_pifive; then
+    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Performance Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+      "P2 Overlay File System" "Enable/disable read-only file system" \
+      "P4 USB Current" "Set USB current limit" \
+      3>&1 1>&2 2>&3)
+  else
+    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Performance Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+      "P2 Overlay File System" "Enable/disable read-only file system" \
+      3>&1 1>&2 2>&3)
+  fi
   RET=$?
   if [ $RET -eq 1 ]; then
     return 0

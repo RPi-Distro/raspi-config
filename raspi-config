@@ -1668,7 +1668,12 @@ do_composite() {
     DEFAULT=
   fi
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like composite video output to be enabled? Warning - this will disable the HDMI outputs." $DEFAULT 20 60 2
+    if is_pifive; then
+      QUESTION="Would you like composite video output to be enabled?"
+    else
+      QUESTION="Would you like composite video output to be enabled? Warning - this will disable the HDMI outputs."
+    fi
+    whiptail --yesno "$QUESTION" $DEFAULT 20 60 2
     RET=$?
   else
     RET=$1

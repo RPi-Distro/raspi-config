@@ -2281,11 +2281,19 @@ do_power_off_on_halt() {
 
 do_boot_order() {
   if [ "$INTERACTIVE" = True ]; then
-    BOOTOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Boot Device Order" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
-      "B1 SD Card Boot " "Boot from SD Card before trying NVMe and then USB (RECOMMENDED)" \
-      "B2 NVMe/USB Boot" "Boot from NVMe before trying USB and then SD Card" \
-      "B3 Network Boot " "Boot from Network unless overridden by SD Card" \
-      3>&1 1>&2 2>&3)
+    if is_pifive; then
+      BOOTOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Boot Device Order" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+        "B1 SD Card Boot"  "Boot from SD Card before trying NVMe and then USB (RECOMMENDED)" \
+        "B2 NVMe/USB Boot" "Boot from NVMe before trying USB and then SD Card" \
+        "B3 Network Boot"  "Boot from Network unless overridden by SD Card" \
+        3>&1 1>&2 2>&3)
+    else
+      BOOTOPT=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Boot Device Order" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+        "B1 SD Card Boot" "Boot from SD Card before trying USB (RECOMMENDED)" \
+        "B2 USB Boot"     "Boot from USB before trying SD Card" \
+        "B3 Network Boot" "Boot from Network unless overridden by SD Card" \
+        3>&1 1>&2 2>&3)
+    fi
   else
     BOOTOPT=$1
     true
@@ -2320,7 +2328,11 @@ do_boot_order() {
         else
           sed $EECFG -i -e "s/^BOOT_ORDER=.*/BOOT_ORDER=${ORD}/"
         fi
-        STATUS="NVMe/USB"
+        if is_pifive; then
+          STATUS="NVMe/USB"
+        else
+          STATUS="USB"
+        fi
         ;;
       B3*)
         if ! grep -q "BOOT_ORDER" $EECFG ; then
@@ -4248,7 +4260,7 @@ do_advanced_menu() {
       "A1 Expand Filesystem" "Ensures that all of the SD card is available" \
       "A2 Network Interface Names" "Enable/disable predictable network i/f names" \
       "A3 Network Proxy Settings" "Configure network proxy settings" \
-      "A4 Boot Order" "Choose boot device priority (SD/net/USB/NVMe)" \
+      "A4 Boot Order" "Choose boot device priority (SD/net/USB)" \
       "A5 Bootloader Version" "Selects the latest or the factory default bootloader" \
       "A6 Beta Access" "Select beta or release software repository" \
       "A7 Wayland" "Switch between X and Wayland backends" \

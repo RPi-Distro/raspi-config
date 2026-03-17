@@ -1758,6 +1758,12 @@ get_fan_temp() {
 }
 
 do_fan() {
+  if is_pihundred; then
+    if [ "$INTERACTIVE" = True ]; then
+      whiptail --msgbox "This model of Raspberry Pi doesn't have a GPIO case fan" 20 60 1
+    fi
+    return 1
+  fi
   GNOW=$(get_fan_gpio)
   TNOW=$(get_fan_temp)
   if [ "$INTERACTIVE" = True ]; then

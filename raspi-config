@@ -57,7 +57,7 @@ else
   CMDLINE=/proc/cmdline
 fi
 
-# tests for Pi 1, 2, 0, CM5, 500 and x00 all test for specific boards...
+# tests for Pi 1, 2, 0, CM4, CM5, 500 and x00 all test for specific boards...
 
 is_pione() {
   if grep -q "^Revision\s*:\s*00[0-9a-fA-F][0-9a-fA-F]$" /proc/cpuinfo; then
@@ -76,6 +76,12 @@ is_pitwo() {
 
 is_pizero() {
   grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]0[9cC][0-9a-fA-F]$" /proc/cpuinfo
+  return $?
+}
+
+is_cmfour() {
+  # matches CM4 only, not CM4S
+  grep -q "^Revision\s*:\s*[ 123][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]14[0-9a-fA-F]$" /proc/cpuinfo
   return $?
 }
 
@@ -192,6 +198,14 @@ has_composite_video() {
     return 1
   else
     return 0
+  fi
+}
+
+has_nvme() {
+  if is_pifive || is_cmfour; then
+    return 0
+  else
+    return 1
   fi
 }
 
@@ -2283,7 +2297,7 @@ do_boot_order() {
     sed $EECFG -i -e "/NET_BOOT_MAX_RETRIES/d"
     case "$BOOTOPT" in
       B1*)
-        if is_pifive; then
+        if has_nvme; then
            ORD=0xf461
         else
            ORD=0xf41
@@ -2296,7 +2310,7 @@ do_boot_order() {
         STATUS="SD Card"
         ;;
       B2*)
-        if is_pifive; then
+        if has_nvme; then
            ORD=0xf146
         else
            ORD=0xf14

@@ -1192,14 +1192,6 @@ do_rpi_connect() {
   if [ -n "$SUDO_USER" ] ; then
     PREFIX="sudo -u $USER XDG_RUNTIME_DIR=/run/user/$SUDO_UID DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$SUDO_UID/bus "
   fi
-  APT_GET_FLAGS=""
-  if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like to enable screen sharing over Raspberry Pi Connect?" --defaultno 20 60 2
-    RET=$?
-  else
-    APT_GET_FLAGS="-y"
-    RET=$1
-  fi
   if is_installed rpi-connect; then
     rpi_connect_version="$(get_package_version rpi-connect)"
   elif is_installed rpi-connect-lite; then
@@ -1207,58 +1199,82 @@ do_rpi_connect() {
   else
     rpi_connect_version="0.0"
   fi
-  if [ $RET -eq 0 ]; then
-    if is_installed rpi-connect || apt-get install "$APT_GET_FLAGS" rpi-connect; then
-      if dpkg --compare-versions "$rpi_connect_version" lt 1.3; then
-        $PREFIX systemctl --user -q enable rpi-connect.service rpi-connect-wayvnc.service
-        $PREFIX systemctl --user -q start rpi-connect.service rpi-connect-wayvnc.service
-      elif dpkg --compare-versions "$rpi_connect_version" lt 2.0; then
-        $PREFIX systemctl --user -q enable rpi-connect.service rpi-connect-wayvnc.service rpi-connect-wayvnc-watcher.path
-        $PREFIX systemctl --user -q start rpi-connect.service
-      else
-        $PREFIX rpi-connect on > /dev/null 2>&1
-      fi
-      STATUS="Screen sharing via Raspberry Pi Connect is enabled"
-    else
-      return 1
-    fi
-  elif [ $RET -eq 1 ]; then
+  if dpkg --compare-versions "$rpi_connect_version" ge 2.0; then
     if [ "$INTERACTIVE" = True ]; then
-      whiptail --yesno "Would you like to enable remote shell access over Raspberry Pi Connect?" --defaultno 20 60 2
+      whiptail --yesno "Would you like to enable Raspberry Pi Connect?" --defaultno 20 60 2
       RET=$?
+    else
+      RET=$1
     fi
     if [ $RET -eq 0 ]; then
-      if is_installed rpi-connect || is_installed rpi-connect-lite || apt-get install "$APT_GET_FLAGS" rpi-connect-lite; then
-        if dpkg --compare-versions "$rpi_connect_version" lt 2.0; then
-          $PREFIX systemctl --user -q enable rpi-connect.service
+      $PREFIX rpi-connect on > /dev/null 2>&1
+      STATUS="Raspberry Pi Connect is enabled"
+    else
+      $PREFIX rpi-connect off > /dev/null 2>&1
+      STATUS="Raspberry Pi Connect is disabled"
+    fi
+  else
+    APT_GET_FLAGS=""
+    if [ "$INTERACTIVE" = True ]; then
+      whiptail --yesno "Would you like to enable screen sharing over Raspberry Pi Connect?" --defaultno 20 60 2
+      RET=$?
+    else
+      APT_GET_FLAGS="-y"
+      RET=$1
+    fi
+    if [ $RET -eq 0 ]; then
+      if is_installed rpi-connect || apt-get install "$APT_GET_FLAGS" rpi-connect; then
+        if dpkg --compare-versions "$rpi_connect_version" lt 1.3; then
+          $PREFIX systemctl --user -q enable rpi-connect.service rpi-connect-wayvnc.service
+          $PREFIX systemctl --user -q start rpi-connect.service rpi-connect-wayvnc.service
+        elif dpkg --compare-versions "$rpi_connect_version" lt 2.0; then
+          $PREFIX systemctl --user -q enable rpi-connect.service rpi-connect-wayvnc.service rpi-connect-wayvnc-watcher.path
           $PREFIX systemctl --user -q start rpi-connect.service
         else
           $PREFIX rpi-connect on > /dev/null 2>&1
         fi
-        STATUS="Remote shell access via Raspberry Pi Connect is enabled"
+        STATUS="Screen sharing via Raspberry Pi Connect is enabled"
       else
         return 1
       fi
     elif [ $RET -eq 1 ]; then
-      if [ "$rpi_connect_version" != "0.0" ]; then
-        if dpkg --compare-versions "$rpi_connect_version" lt 1.3; then
-          $PREFIX systemctl --user -q stop rpi-connect.service rpi-connect-wayvnc.service
-          $PREFIX systemctl --user -q disable rpi-connect-wayvnc.service rpi-connect.service
-        elif dpkg --compare-versions "$rpi_connect_version" lt 2.0; then
-          $PREFIX systemctl --user -q stop rpi-connect.service
-          $PREFIX systemctl --user -q disable rpi-connect.service rpi-connect-wayvnc.service rpi-connect-wayvnc-watcher.path
+      if [ "$INTERACTIVE" = True ]; then
+        whiptail --yesno "Would you like to enable remote shell access over Raspberry Pi Connect?" --defaultno 20 60 2
+        RET=$?
+      fi
+      if [ $RET -eq 0 ]; then
+        if is_installed rpi-connect || is_installed rpi-connect-lite || apt-get install "$APT_GET_FLAGS" rpi-connect-lite; then
+          if dpkg --compare-versions "$rpi_connect_version" lt 2.0; then
+            $PREFIX systemctl --user -q enable rpi-connect.service
+            $PREFIX systemctl --user -q start rpi-connect.service
+          else
+            $PREFIX rpi-connect on > /dev/null 2>&1
+          fi
+          STATUS="Remote shell access via Raspberry Pi Connect is enabled"
         else
-          $PREFIX rpi-connect off > /dev/null 2>&1
+          return 1
         fi
-        STATUS="Raspberry Pi Connect is disabled"
+      elif [ $RET -eq 1 ]; then
+        if [ "$rpi_connect_version" != "0.0" ]; then
+          if dpkg --compare-versions "$rpi_connect_version" lt 1.3; then
+            $PREFIX systemctl --user -q stop rpi-connect.service rpi-connect-wayvnc.service
+            $PREFIX systemctl --user -q disable rpi-connect-wayvnc.service rpi-connect.service
+          elif dpkg --compare-versions "$rpi_connect_version" lt 2.0; then
+            $PREFIX systemctl --user -q stop rpi-connect.service
+            $PREFIX systemctl --user -q disable rpi-connect.service rpi-connect-wayvnc.service rpi-connect-wayvnc-watcher.path
+          else
+            $PREFIX rpi-connect off > /dev/null 2>&1
+          fi
+          STATUS="Raspberry Pi Connect is disabled"
+        else
+          STATUS="Raspberry Pi Connect isn't installed"
+        fi
       else
-        STATUS="Raspberry Pi Connect isn't installed"
+        return $RET
       fi
     else
       return $RET
     fi
-  else
-    return $RET
   fi
   if [ "$INTERACTIVE" = True ]; then
     whiptail --msgbox "$STATUS" 20 60 1

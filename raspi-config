@@ -1200,7 +1200,11 @@ do_rpi_connect() {
     APT_GET_FLAGS="-y"
     RET=$1
   fi
-  rpi_connect_version="$(get_package_version rpi-connect)"
+  if is_installed rpi-connect; then
+    rpi_connect_version="$(get_package_version rpi-connect)"
+  elif is_installed rpi-connect-lite; then
+    rpi_connect_version="$(get_package_version rpi-connect-lite)"
+  fi
   if [ $RET -eq 0 ]; then
     if is_installed rpi-connect || apt-get install "$APT_GET_FLAGS" rpi-connect; then
       if dpkg --compare-versions "$rpi_connect_version" lt 1.3; then

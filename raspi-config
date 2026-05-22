@@ -2213,7 +2213,7 @@ do_ab_firmware() {
         if [ "$CURRENT" = "B2 Disable" ]; then
           ASK_TO_REBOOT=1
         fi
-        sed "$CONFIG" -i -e "s/^#dtoverlay=no$SPIDEV.*/dtoverlay=no$SPIDEV/"
+        sed -i -e "s/^#dtoverlay=no$SPIDEV.*/dtoverlay=no$SPIDEV/" "$CONFIG"
         if ! grep -q "^dtoverlay=no$SPIDEV" "$CONFIG"; then
           if ! tail -1 "$CONFIG" | grep -q "\\[all\\]" ; then
             printf "[all]\n" >> "$CONFIG"
@@ -2226,7 +2226,7 @@ do_ab_firmware() {
         if [ "$CURRENT" = "B1 Enable" ]; then
           ASK_TO_REBOOT=1
         fi
-        sed "$CONFIG" -i -e "s/^dtoverlay=no$SPIDEV.*/#dtoverlay=no$SPIDEV/"
+        sed -i -e "s/^dtoverlay=no$SPIDEV.*/#dtoverlay=no$SPIDEV/" "$CONFIG"
         STATUS=disabled
         ;;
       *)

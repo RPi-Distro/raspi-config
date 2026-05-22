@@ -2191,6 +2191,9 @@ get_ab_firmware() {
 }
 
 do_ab_firmware() {
+  if ! is_pifive ; then
+    return 1
+  fi
   SPIDEV="spi10"
   if [ "$(get_ab_firmware)" -eq 0 ]; then
     CURRENT="B1"

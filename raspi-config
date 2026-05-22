@@ -2193,15 +2193,15 @@ get_ab_firmware() {
 do_ab_firmware() {
   SPIDEV="spi10"
   if [ "$(get_ab_firmware)" -eq 0 ]; then
-    CURRENT="B1 Enable"
+    CURRENT="B1"
   else
-    CURRENT="B2 Disable"
+    CURRENT="B2"
   fi
   if [ "$INTERACTIVE" = True ]; then
     RET=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --default-item "$CURRENT" \
       --menu "AB firmware updates" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
-      "B1 Enable" "Enable AB firmware updates (warning: Flashrom cannot be used for firmware updates)" \
-      "B2 Disable" "Disable AB firmware updates" \
+      "B1" "Enable AB firmware updates (warning: Flashrom cannot be used for firmware updates)" \
+      "B2" "Disable AB firmware updates" \
       3>&1 1>&2 2>&3)
   else
     RET=$1
@@ -2210,7 +2210,7 @@ do_ab_firmware() {
   if [ $? -eq 0 ]; then
     case "$RET" in
       B1*)
-        if [ "$CURRENT" = "B2 Disable" ]; then
+        if [ "$CURRENT" = "B2" ]; then
           ASK_TO_REBOOT=1
         fi
         sed -i -e "s/^#dtoverlay=no$SPIDEV.*/dtoverlay=no$SPIDEV/" "$CONFIG"
@@ -2223,7 +2223,7 @@ do_ab_firmware() {
         STATUS=enabled
         ;;
       B2*)
-        if [ "$CURRENT" = "B1 Enable" ]; then
+        if [ "$CURRENT" = "B1" ]; then
           ASK_TO_REBOOT=1
         fi
         sed -i -e "s/^dtoverlay=no$SPIDEV.*/#dtoverlay=no$SPIDEV/" "$CONFIG"

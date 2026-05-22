@@ -2218,7 +2218,7 @@ do_ab_firmware() {
           if ! tail -1 "$CONFIG" | grep -q "\\[all\\]" ; then
             printf "[all]\n" >> "$CONFIG"
           fi
-          printf "dtoverlay=no$SPIDEV\n" >> "$CONFIG"
+          printf 'dtoverlay=no%s\n' "$SPIDEV" >> "$CONFIG"
         fi
         STATUS=enabled
         ;;

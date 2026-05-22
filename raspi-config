@@ -2192,7 +2192,6 @@ get_ab_firmware() {
 
 do_ab_firmware() {
   SPIDEV="spi10"
-  CURRENT=0
   if [ "$(get_ab_firmware)" -eq 0 ]; then
     CURRENT="B1 Enable"
   else

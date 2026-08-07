@@ -2308,13 +2308,25 @@ do_beta_mode() {
         if is_pifour || is_pifive ; then
           sed /etc/default/rpi-eeprom-update -i -e "s/^FIRMWARE_RELEASE_STATUS.*/FIRMWARE_RELEASE_STATUS=\"latest\"/"
         fi
-        cat > /etc/apt/sources.list.d/beta.list << EOF
-deb http://archive.raspberrypi.com/debian/ $DVER beta
-#deb-src http://archive.raspberrypi.com/debian/ $DVER beta
+        cat > /etc/apt/sources.list.d/beta.sources << EOF
+Types: deb
+URIs: http://archive.raspberrypi.com/debian/
+Suites: $DVER
+Components: beta
+
+Types: deb-src
+Enabled: no
+URIs: http://archive.raspberrypi.com/debian/
+Suites: $DVER
+Components: beta
 EOF
+        # Remove old-style list if present
+        rm -f /etc/apt/sources.list.d/beta.list
+
         BETA="Beta"
         ;;
       B2*)
+        rm -f /etc/apt/sources.list.d/beta.sources
         rm -f /etc/apt/sources.list.d/beta.list
         BETA="Release"
         ;;

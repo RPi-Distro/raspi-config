@@ -51,7 +51,8 @@ if is_pi ; then
   if [ -e /proc/device-tree/chosen/os_prefix ]; then
     PREFIX="$(tr -d '\0' < /proc/device-tree/chosen/os_prefix)"
   fi
-  CMDLINE="/boot${FIRMWARE}/${PREFIX}cmdline.txt"
+  CMDLINE_FILE="$(vcgencmd get_config cmdline 2> /dev/null | sed -n "s/^cmdline=//p")"
+  CMDLINE="/boot${FIRMWARE}/${PREFIX}${CMDLINE_FILE:-cmdline.txt}"
 else
   CMDLINE=/proc/cmdline
 fi

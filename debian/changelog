@@ -1,3 +1,9 @@
+raspi-config (20260927+1) trixie; urgency=medium
+
+  * Recover service-owned PTP pin mappings after an unclean PPS service exit.
+
+ -- ahmadexp <ahmadexp@gmail.com>  Sun, 27 Sep 2026 19:12:52 -0700
+
 raspi-config (20260927) trixie; urgency=medium
 
   * Add RP1 PTP PPS runtime package and GPIO configuration menu.

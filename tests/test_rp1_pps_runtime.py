@@ -8,6 +8,7 @@ import threading
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import unittest
 
 
@@ -102,6 +103,8 @@ class RP1PPSTests(unittest.TestCase):
         self.lose_mapping_gpio = None
         self.interrupt_on_sleep = False
         self.clock = FakeClock()
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.ownership_file = Path(self.tempdir.name) / 'owned.json'
 
         def sleep(seconds):
             self.clock.sleep(seconds)
@@ -153,7 +156,12 @@ class RP1PPSTests(unittest.TestCase):
 
         self.tool = rp1.RP1PPS(interface='eth0', testptp='/opt/testptp',
             inventory_fn=inventory, monotonic=self.clock.monotonic,
-            sleep=sleep, popen_factory=popen)
+            sleep=sleep, popen_factory=popen,
+            ownership_file=self.ownership_file,
+            boot_id_fn=lambda: 'test-boot')
+
+    def tearDown(self):
+        self.tempdir.cleanup()
 
     def test_capture_uses_selected_gpio_and_unmaps_after_success(self):
         self.tool.preflight()
@@ -272,7 +280,40 @@ class RP1PPSTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'PEROUT disable failed'):
             self.tool.output(6, duration=0.1)
         self.assertEqual(self.pin_functions[6], 2)
+        self.assertTrue(self.ownership_file.exists())
         self.assertNotIn(['-L', '6,0'], [call[5:7] for call in self.calls])
+
+    def test_cleanup_disables_owned_perout_before_unmapping(self):
+        self.tool.preflight()
+        self.pin_functions[18] = 2
+        self.tool._record_owned_mapping('output', 18)
+
+        result = self.tool.cleanup_mapping('output', 18)
+
+        options = [call[5:] for call in self.calls]
+        self.assertTrue(result['cleaned'])
+        self.assertLess(options.index(['-p', '0']), options.index(['-L', '18,0']))
+        self.assertEqual(self.pin_functions[18], 0)
+        self.assertFalse(self.ownership_file.exists())
+
+    def test_cleanup_does_not_touch_unowned_or_conflicting_mapping(self):
+        self.pin_functions[18] = 2
+        result = self.tool.cleanup_mapping('output', 18)
+        self.assertFalse(result['cleaned'])
+        self.assertEqual(self.pin_functions[18], 2)
+        self.assertEqual(self.calls, [])
+
+        self.tool.preflight = lambda: None
+        self.tool.clock = {'device': '/dev/ptp7'}
+        self.tool._record_owned_mapping('output', 18)
+        self.pin_functions[18] = 0
+        self.pin_functions[17] = 2
+        calls_before = len(self.calls)
+        result = self.tool.cleanup_mapping('output', 18)
+        self.assertEqual(result['reason'], 'PTP mapping ownership mismatch')
+        self.assertEqual(len(self.calls), calls_before + 1)
+        self.assertEqual(self.pin_functions[17], 2)
+        self.assertTrue(self.ownership_file.exists())
 
     def test_output_aborts_and_cleans_up_if_mapping_disappears(self):
         self.tool.preflight()

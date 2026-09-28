@@ -8,6 +8,7 @@ Input and output are exclusive on the current backend.
 """
 import argparse
 import json
+import os
 from pathlib import Path
 import queue
 import re
@@ -37,7 +38,8 @@ class RP1PPS:
     def __init__(self, *, interface='eth0', testptp='testptp',
                  inventory_fn=None, monotonic=None, sleep=None,
                  popen_factory=None, output_monitor_interval=1.0,
-                 input_retry_delay=1.0):
+                 input_retry_delay=1.0, ownership_file=None,
+                 boot_id_fn=None):
         self.interface = interface
         self.testptp = str(testptp)
         if output_monitor_interval <= 0:
@@ -50,9 +52,15 @@ class RP1PPS:
         self.popen_factory = popen_factory or subprocess.Popen
         self.output_monitor_interval = output_monitor_interval
         self.input_retry_delay = input_retry_delay
+        self.ownership_file = Path(ownership_file) if ownership_file else None
+        self.boot_id_fn = boot_id_fn or self._read_boot_id
         self.clock = None
         self.capabilities = None
         self.pins = None
+
+    @staticmethod
+    def _read_boot_id():
+        return Path('/proc/sys/kernel/random/boot_id').read_text().strip()
 
     def _command(self, *options, timeout=10, acknowledgments=()):
         if self.clock is None:
@@ -89,7 +97,7 @@ class RP1PPS:
                 raise RuntimeError(f'testptp did not acknowledge {expected!r}: {output.strip()}')
         return stdout
 
-    def preflight(self):
+    def _discover_phc(self):
         info = self.inventory_fn(self.interface)
         self.clock = select_mac(info)
         if info['driver'] not in ('macb', 'macb_pps'):
@@ -98,15 +106,9 @@ class RP1PPS:
         expected = {'extts': 1, 'perout': 1, 'pins': 28}
         if caps != expected:
             raise RuntimeError(f'Unexpected RP1 PPS capabilities: {caps!r}')
-        cap_output = self._command('-c')
-        observed = {}
-        for line in cap_output.splitlines():
-            for key, pattern in CAPABILITY_PATTERNS.items():
-                match = pattern.match(line)
-                if match:
-                    observed[key] = int(match.group(1))
-        if observed != expected:
-            raise RuntimeError(f'testptp capabilities differ from sysfs: {observed!r}')
+        return info, expected
+
+    def _read_pin_map(self):
         pin_output = self._command('-l')
         pins = {}
         for line in pin_output.splitlines():
@@ -117,6 +119,20 @@ class RP1PPS:
                                     'channel': int(channel)}
         if set(pins) != set(range(28)):
             raise RuntimeError(f'testptp returned an incomplete pin map: {sorted(pins)}')
+        return pins
+
+    def preflight(self):
+        info, expected = self._discover_phc()
+        cap_output = self._command('-c')
+        observed = {}
+        for line in cap_output.splitlines():
+            for key, pattern in CAPABILITY_PATTERNS.items():
+                match = pattern.match(line)
+                if match:
+                    observed[key] = int(match.group(1))
+        if observed != expected:
+            raise RuntimeError(f'testptp capabilities differ from sysfs: {observed!r}')
+        pins = self._read_pin_map()
         occupied = {gpio: row for gpio, row in pins.items() if row['function'] != 0}
         if occupied:
             raise RuntimeError(f'Existing PTP pin mappings must be cleared first: {occupied}')
@@ -124,6 +140,92 @@ class RP1PPS:
         return {'interface': self.interface, 'driver': info['driver'],
                 'phc': self.clock['device'], 'capabilities': observed,
                 'pins': pins}
+
+    def _record_owned_mapping(self, mode, gpio):
+        if self.ownership_file is None:
+            return
+        self.ownership_file.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        record = {'interface': self.interface, 'phc': self.clock['device'],
+                  'mode': mode, 'gpio': gpio,
+                  'function': 1 if mode == 'input' else 2,
+                  'boot_id': self.boot_id_fn()}
+        temporary = self.ownership_file.with_name(
+            self.ownership_file.name + f'.{os.getpid()}.tmp')
+        temporary.write_text(json.dumps(record, sort_keys=True) + '\n')
+        temporary.chmod(0o600)
+        temporary.replace(self.ownership_file)
+
+    def _forget_owned_mapping(self):
+        if self.ownership_file is not None:
+            self.ownership_file.unlink(missing_ok=True)
+
+    def cleanup_mapping(self, mode, gpio):
+        """Clear only a mapping previously recorded as owned by this service."""
+        if mode not in ('input', 'output'):
+            raise ValueError('mode must be input or output')
+        if not isinstance(gpio, int) or not 0 <= gpio < 28:
+            raise ValueError('GPIO must be an RP1/BCM header GPIO in 0..27')
+        if self.ownership_file is None or not self.ownership_file.exists():
+            return {'cleaned': False, 'reason': 'no owned mapping record'}
+        try:
+            record = json.loads(self.ownership_file.read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            raise RuntimeError(f'Cannot read PPS ownership record: {exc}') from exc
+        if not isinstance(record, dict):
+            raise RuntimeError('PPS ownership record is not a JSON object')
+        expected = {'interface': self.interface, 'mode': mode, 'gpio': gpio,
+                    'function': 1 if mode == 'input' else 2}
+        if any(record.get(key) != value for key, value in expected.items()):
+            print('PPS cleanup skipped: ownership record does not match this service configuration',
+                  file=sys.stderr, flush=True)
+            return {'cleaned': False, 'reason': 'ownership record mismatch'}
+        try:
+            current_boot_id = self.boot_id_fn()
+        except OSError as exc:
+            raise RuntimeError(f'Cannot verify boot identity for PPS cleanup: {exc}') from exc
+        if record.get('boot_id') != current_boot_id:
+            self._forget_owned_mapping()
+            return {'cleaned': False, 'reason': 'ownership record belongs to an earlier boot'}
+
+        try:
+            self._discover_phc()
+            if record.get('phc') != self.clock['device']:
+                print('PPS cleanup skipped: PHC identity changed since the mapping was created',
+                      file=sys.stderr, flush=True)
+                return {'cleaned': False, 'reason': 'PHC identity changed'}
+            pins = self._read_pin_map()
+        except (OSError, RuntimeError, ValueError) as exc:
+            # Losing the PHC unregisters it from the PTP core, which disables
+            # its event requests. Keep the record so a later service invocation
+            # can retry if the device is only temporarily unavailable.
+            print(f'PPS cleanup could not inspect the PHC: {exc}',
+                  file=sys.stderr, flush=True)
+            return {'cleaned': False, 'reason': 'PHC unavailable'}
+
+        occupied = {index: row for index, row in pins.items()
+                    if row['function'] != 0}
+        if not occupied:
+            self._forget_owned_mapping()
+            return {'cleaned': False, 'reason': 'mapping already clear'}
+        expected_function = 1 if mode == 'input' else 2
+        if (set(occupied) != {gpio} or
+                occupied[gpio]['function'] != expected_function or
+                occupied[gpio]['channel'] != 0):
+            print(f'PPS cleanup skipped: current PTP mappings do not match the owned '
+                  f'mapping: {occupied}', file=sys.stderr, flush=True)
+            return {'cleaned': False, 'reason': 'PTP mapping ownership mismatch'}
+
+        if mode == 'output':
+            self._command('-p', '0', timeout=10,
+                          acknowledgments=('periodic output request okay',))
+        self._command('-L', f'{gpio},0', timeout=10,
+                      acknowledgments=('set pin function okay',))
+        remaining = {index: row for index, row in self._read_pin_map().items()
+                     if row['function'] != 0}
+        if remaining:
+            raise RuntimeError(f'PTP pin mappings remained after PPS cleanup: {remaining}')
+        self._forget_owned_mapping()
+        return {'cleaned': True, 'mode': mode, 'gpio': gpio}
 
     def plan(self, mode, gpio, *, edge='rising', events=4,
              period_ns=1_000_000_000, high_ns=10_000_000,
@@ -242,6 +344,7 @@ class RP1PPS:
         timeout = plan['timeout_s']
         mapped = False
         try:
+            self._record_owned_mapping('input', gpio)
             self._command('-L', f'{gpio},1', timeout=10,
                           acknowledgments=('set pin function okay',))
             mapped = True
@@ -301,6 +404,7 @@ class RP1PPS:
             if mapped:
                 self._command('-L', f'{gpio},0', timeout=10,
                               acknowledgments=('set pin function okay',))
+                self._forget_owned_mapping()
 
     def _verify_output_mapping(self, gpio):
         output = self._command('-l', timeout=10)
@@ -330,6 +434,7 @@ class RP1PPS:
         started_at = None
         stopped_by = 'duration'
         try:
+            self._record_owned_mapping('output', gpio)
             self._command('-L', f'{gpio},2', timeout=10,
                           acknowledgments=('set pin function okay',))
             mapped = True
@@ -363,6 +468,7 @@ class RP1PPS:
                 try:
                     self._command('-L', f'{gpio},0', timeout=10,
                                   acknowledgments=('set pin function okay',))
+                    self._forget_owned_mapping()
                 except Exception as exc:
                     cleanup_error = f'PEROUT stopped but pin unmap failed: {exc}'
         if cleanup_error:
@@ -380,6 +486,10 @@ def main():
     parser.add_argument('--mode', choices=('input', 'output'), required=True)
     parser.add_argument('--gpio', type=int, required=True,
                         help='RP1/BCM GPIO number 0..27, not physical pin number')
+    parser.add_argument('--ownership-file',
+                        help='record the mapping owned by this service for crash cleanup')
+    parser.add_argument('--cleanup', action='store_true',
+                        help='clear the service-owned mapping after an unclean exit')
     parser.add_argument('--edge', choices=('rising', 'falling'), default='rising')
     parser.add_argument('--events', type=int, default=4,
                         help='input event count; use 0 for continuous service capture')
@@ -405,7 +515,11 @@ def main():
             raise ValueError('event-timeout must be positive')
         if args.duration is not None and args.duration <= 0:
             raise ValueError('duration must be positive')
-        pps = RP1PPS(interface=args.interface, testptp=args.testptp)
+        pps = RP1PPS(interface=args.interface, testptp=args.testptp,
+                     ownership_file=args.ownership_file)
+        if args.cleanup:
+            print(json.dumps(pps.cleanup_mapping(args.mode, args.gpio), indent=2))
+            return
         while True:
             try:
                 preflight = pps.preflight()

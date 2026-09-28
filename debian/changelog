@@ -1,3 +1,16 @@
+raspi-config (20260927+3) trixie; urgency=medium
+
+  * Preserve debhelper-generated systemd maintainer actions during bytecode cleanup.
+
+ -- ahmadexp <ahmadexp@gmail.com>  Sun, 27 Sep 2026 19:50:21 -0700
+
+raspi-config (20260927+2) trixie; urgency=medium
+
+  * Prevent runtime Python bytecode from leaving unowned package files.
+  * Declare Python as a test build dependency.
+
+ -- ahmadexp <ahmadexp@gmail.com>  Sun, 27 Sep 2026 19:41:57 -0700
+
 raspi-config (20260927+1) trixie; urgency=medium
 
   * Recover service-owned PTP pin mappings after an unclean PPS service exit.

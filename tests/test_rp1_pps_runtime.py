@@ -6,6 +6,7 @@ from contextlib import redirect_stderr
 from io import StringIO
 import threading
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -94,6 +95,18 @@ class FakeStreamPopen:
 
 
 class RP1PPSTests(unittest.TestCase):
+    def test_cli_does_not_write_bytecode_into_package_directory(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            package_dir = Path(tempdir) / 'rp1-ptp-pps'
+            shutil.copytree(ROOT, package_dir,
+                            ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
+            result = subprocess.run([sys.executable,
+                str(package_dir / 'rp1_pps.py'), '--mode', 'input',
+                '--gpio', '18', '--help'], text=True,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertFalse((package_dir / '__pycache__').exists())
+
     def setUp(self):
         self.calls = []
         self.pin_functions = {gpio: 0 for gpio in range(28)}

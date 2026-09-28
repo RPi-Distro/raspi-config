@@ -1,0 +1,15 @@
+#!/bin/sh
+set -e
+
+# Remove bytecode left behind by earlier package versions.
+case "$1" in
+    upgrade|failed-upgrade|remove|purge)
+        for cache in /usr/libexec/rp1-ptp-pps/__pycache__/*.pyc; do
+            [ -e "$cache" ] || continue
+            rm -f -- "$cache"
+        done
+        rmdir /usr/libexec/rp1-ptp-pps/__pycache__ 2>/dev/null || true
+        ;;
+esac
+
+#DEBHELPER#

@@ -2,7 +2,8 @@ Source: raspi-config
 Section: utils
 Priority: optional
 Maintainer: Serge Schneider <serge@raspberrypi.com>
-Build-Depends: debhelper-compat (= 13), shunit2 <!nocheck>, linux-libc-dev
+Build-Depends: debhelper-compat (= 13), shunit2 <!nocheck>,
+ python3 <!nocheck>, linux-libc-dev
 Standards-Version: 4.3.0
 Vcs-Git: https://github.com/RPi-Distro/raspi-config.git
 Vcs-Browser: https://github.com/RPi-Distro/raspi-config

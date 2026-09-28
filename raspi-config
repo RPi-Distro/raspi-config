@@ -1833,7 +1833,7 @@ do_journald_storage() {
       "5" "None" \
       3>&1 1>&2 2>&3)
   else
-    RES=""
+    RES="$1"
     true
   fi
   # shellcheck disable=SC2181

@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Offline tests for guarded testptp GPIO control."""
 import importlib.util
+from contextlib import redirect_stderr
+from io import StringIO
 import threading
 from pathlib import Path
 import subprocess
@@ -211,19 +213,44 @@ class RP1PPSTests(unittest.TestCase):
         self.assertIn(['-E', '1', '-e', '2147483647'],
                       [call[5:] for call in self.calls])
 
-    def test_continuous_input_timeout_unmaps_selected_gpio(self):
+    def test_continuous_input_rearms_after_inactivity_without_systemd_failure(
+            self):
         self.tool.preflight()
+        attempts = []
 
-        def popen(argv, **kwargs):
-            self.calls.append(list(argv))
-            if argv[-2:] == ['-e', '2147483647']:
-                return FakeStreamPopen(argv, events=0)
-            return self.tool_popen(argv, **kwargs)
+        def capture_continuous(_edge, *, event_timeout, event_callback=None):
+            attempts.append(event_timeout)
+            if len(attempts) <= 2:
+                raise TimeoutError('No PPS input event received')
+            for timestamp_ns in (1_000_000_123, 2_000_000_123):
+                event_callback({'channel': 0, 'timestamp_ns': timestamp_ns})
+            return {'events_received': 2, 'stopped_by': 'signal'}
 
-        self.tool_popen = self.tool.popen_factory
-        self.tool.popen_factory = popen
-        with self.assertRaisesRegex(TimeoutError, 'No PPS input event'):
-            self.tool.capture(11, events=0, event_timeout=0.05)
+        self.tool._capture_continuous = capture_continuous
+        diagnostics = StringIO()
+        with redirect_stderr(diagnostics):
+            result = self.tool.capture(11, events=0, event_timeout=0.05)
+        self.assertEqual(attempts, [0.05, 0.05, 0.05])
+        self.assertEqual(result['events_received'], 2)
+        self.assertEqual(result['stopped_by'], 'signal')
+        self.assertEqual(self.clock.now, 2 * self.tool.input_retry_delay)
+        self.assertEqual(diagnostics.getvalue().count('No PPS input event'), 1)
+        self.assertEqual(diagnostics.getvalue().count('PPS input resumed'), 1)
+        self.assertEqual([call[5:7] for call in self.calls
+                          if call[5:6] == ['-L']],
+                         [['-L', '11,1'], ['-L', '11,0']])
+        self.assertEqual(self.pin_functions[11], 0)
+
+    def test_continuous_input_signal_during_retry_cleans_mapping(self):
+        self.tool.preflight()
+        self.interrupt_on_sleep = True
+
+        def timeout_capture(*_args, **_kwargs):
+            raise TimeoutError('No PPS input event received')
+
+        self.tool._capture_continuous = timeout_capture
+        result = self.tool.capture(11, events=0, event_timeout=0.05)
+        self.assertEqual(result['stopped_by'], 'signal')
         self.assertEqual(self.pin_functions[11], 0)
         self.assertEqual(self.calls[-1][5:7], ['-L', '11,0'])
 

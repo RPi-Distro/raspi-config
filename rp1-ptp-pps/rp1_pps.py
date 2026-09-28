@@ -36,16 +36,20 @@ ERROR_PREFIXES = ('opening ', 'clock_adjtime:', 'PTP_PIN_SETFUNC:',
 class RP1PPS:
     def __init__(self, *, interface='eth0', testptp='testptp',
                  inventory_fn=None, monotonic=None, sleep=None,
-                 popen_factory=None, output_monitor_interval=1.0):
+                 popen_factory=None, output_monitor_interval=1.0,
+                 input_retry_delay=1.0):
         self.interface = interface
         self.testptp = str(testptp)
         if output_monitor_interval <= 0:
             raise ValueError('output monitor interval must be positive')
+        if input_retry_delay <= 0:
+            raise ValueError('input retry delay must be positive')
         self.inventory_fn = inventory_fn or inventory
         self.monotonic = monotonic or time.monotonic
         self.sleep = sleep or time.sleep
         self.popen_factory = popen_factory or subprocess.Popen
         self.output_monitor_interval = output_monitor_interval
+        self.input_retry_delay = input_retry_delay
         self.clock = None
         self.capabilities = None
         self.pins = None
@@ -147,8 +151,10 @@ class RP1PPS:
                     'mapping': shlex.join(base + mapping),
                     'capture': shlex.join(base + mapping + capture),
                     'cleanup': shlex.join(base + ['-L', f'{gpio},0']),
-                    'timeout_s': (event_timeout if events == 0 else
-                                  timeout if timeout is not None else max(5, events * 3))}
+                    'timeout_s': (None if events == 0 else
+                                  timeout if timeout is not None else max(5, events * 3)),
+                    'event_timeout_s': event_timeout if events == 0 else None,
+                    'retry_delay_s': self.input_retry_delay if events == 0 else None}
         if period_ns < 1 or high_ns < 1 or high_ns >= period_ns:
             raise ValueError('require 0 < high-ns < period-ns')
         if phase_ns < 0 or phase_ns >= period_ns:
@@ -240,10 +246,42 @@ class RP1PPS:
                           acknowledgments=('set pin function okay',))
             mapped = True
             if events == 0:
-                capture = self._capture_continuous(edge,
-                    event_timeout=event_timeout, event_callback=event_callback)
-                return {'passed': True, 'mode': 'input', 'gpio': gpio,
-                        'edge': edge, 'continuous': True, **capture}
+                events_received = 0
+                input_inactive = False
+
+                def report_event(event):
+                    nonlocal events_received, input_inactive
+                    events_received += 1
+                    if input_inactive:
+                        print('PPS input resumed', file=sys.stderr, flush=True)
+                        input_inactive = False
+                    if event_callback:
+                        event_callback(event)
+
+                while True:
+                    try:
+                        capture = self._capture_continuous(edge,
+                            event_timeout=event_timeout,
+                            event_callback=report_event)
+                    except TimeoutError as exc:
+                        if not input_inactive:
+                            print(f'{exc}; rearming input capture in '
+                                  f'{self.input_retry_delay:g} seconds',
+                                  file=sys.stderr, flush=True)
+                            input_inactive = True
+                        try:
+                            self.sleep(self.input_retry_delay)
+                        except KeyboardInterrupt:
+                            return {'passed': True, 'mode': 'input',
+                                    'gpio': gpio, 'edge': edge,
+                                    'continuous': True,
+                                    'events_received': events_received,
+                                    'stopped_by': 'signal'}
+                        continue
+                    return {'passed': True, 'mode': 'input', 'gpio': gpio,
+                            'edge': edge, 'continuous': True,
+                            'events_received': events_received,
+                            'stopped_by': capture['stopped_by']}
             output = self._command('-E', '1' if edge == 'rising' else '2',
                 '-e', str(events),
                 timeout=timeout,
@@ -348,7 +386,7 @@ def main():
     parser.add_argument('--timeout', type=float,
                         help='input capture timeout, default is max(5 s, 3 s/event)')
     parser.add_argument('--event-timeout', type=float, default=5.0,
-                        help='continuous capture inactivity timeout in seconds')
+                        help='seconds without a pulse before continuous input is re-armed')
     parser.add_argument('--period-ns', type=int, default=1_000_000_000)
     parser.add_argument('--high-ns', type=int, default=10_000_000)
     parser.add_argument('--phase-ns', type=int, default=0)

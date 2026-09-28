@@ -1,6 +1,7 @@
 raspi-config (20260927) trixie; urgency=medium
 
   * Add RP1 PTP PPS runtime package and GPIO configuration menu.
+  * Re-arm continuous PPS input after signal loss without restarting the service.
 
  -- ahmadexp <ahmadexp@gmail.com>  Sun, 27 Sep 2026 17:10:32 -0700
 

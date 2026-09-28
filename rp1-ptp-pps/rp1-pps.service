@@ -1,0 +1,27 @@
+[Unit]
+Description=RP1 Ethernet PHC PPS input or output
+After=systemd-modules-load.service
+StartLimitIntervalSec=0
+ConditionPathExists=/etc/default/rp1-pps
+
+[Service]
+Type=simple
+User=root
+EnvironmentFile=/etc/default/rp1-pps
+ExecStart=/usr/bin/python3 /usr/libexec/rp1-ptp-pps/rp1_pps.py --interface ${PPS_INTERFACE} --testptp ${TESTPTP} --mode ${PPS_MODE} --gpio ${PPS_GPIO} --edge ${PPS_EDGE} --events ${PPS_EVENTS} --event-timeout ${PPS_EVENT_TIMEOUT} --period-ns ${PPS_PERIOD_NS} --high-ns ${PPS_HIGH_NS} --phase-ns ${PPS_PHASE_NS} --execute --wait-for-phc
+Restart=on-failure
+RestartSec=5s
+KillSignal=SIGTERM
+TimeoutStopSec=30s
+CapabilityBoundingSet=CAP_SYS_TIME
+AmbientCapabilities=CAP_SYS_TIME
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+
+[Install]
+WantedBy=multi-user.target

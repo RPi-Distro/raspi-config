@@ -1,0 +1,11 @@
+# Copy to /etc/default/rp1-pps and edit for the selected mode.
+PPS_INTERFACE=eth0
+TESTPTP=/usr/bin/testptp
+PPS_MODE=input
+PPS_GPIO=18
+PPS_EDGE=rising
+PPS_EVENTS=0
+PPS_EVENT_TIMEOUT=5
+PPS_PERIOD_NS=1000000000
+PPS_HIGH_NS=10000000
+PPS_PHASE_NS=0

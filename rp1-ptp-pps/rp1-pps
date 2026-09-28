@@ -1,0 +1,3 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+exec /usr/bin/python3 /usr/libexec/rp1-ptp-pps/rp1_pps.py "$@"

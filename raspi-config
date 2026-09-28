@@ -4025,9 +4025,301 @@ do_display_menu() {
   fi
 }
 
+rp1_pps_select_gpio() {
+  whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Select an RP1 GPIO using its BCM number. Only GPIO18 has electrical PPS test evidence so far. GPIO0 and GPIO1 are used for HAT identification." 24 78 18 \
+    "0" "BCM GPIO 0 (physical pin 27, HAT ID)" \
+    "1" "BCM GPIO 1 (physical pin 28, HAT ID)" \
+    "2" "BCM GPIO 2 (physical pin 3)" \
+    "3" "BCM GPIO 3 (physical pin 5)" \
+    "4" "BCM GPIO 4 (physical pin 7)" \
+    "5" "BCM GPIO 5 (physical pin 29)" \
+    "6" "BCM GPIO 6 (physical pin 31)" \
+    "7" "BCM GPIO 7 (physical pin 26)" \
+    "8" "BCM GPIO 8 (physical pin 24)" \
+    "9" "BCM GPIO 9 (physical pin 21)" \
+    "10" "BCM GPIO 10 (physical pin 19)" \
+    "11" "BCM GPIO 11 (physical pin 23)" \
+    "12" "BCM GPIO 12 (physical pin 32)" \
+    "13" "BCM GPIO 13 (physical pin 33)" \
+    "14" "BCM GPIO 14 (physical pin 8)" \
+    "15" "BCM GPIO 15 (physical pin 10)" \
+    "16" "BCM GPIO 16 (physical pin 36)" \
+    "17" "BCM GPIO 17 (physical pin 11)" \
+    "18" "BCM GPIO 18 (physical pin 12)" \
+    "19" "BCM GPIO 19 (physical pin 35)" \
+    "20" "BCM GPIO 20 (physical pin 38)" \
+    "21" "BCM GPIO 21 (physical pin 40)" \
+    "22" "BCM GPIO 22 (physical pin 15)" \
+    "23" "BCM GPIO 23 (physical pin 16)" \
+    "24" "BCM GPIO 24 (physical pin 18)" \
+    "25" "BCM GPIO 25 (physical pin 22)" \
+    "26" "BCM GPIO 26 (physical pin 37)" \
+    "27" "BCM GPIO 27 (physical pin 13)" \
+    3>&1 1>&2 2>&3
+}
+
+rp1_pps_restore_service() {
+  restore_service=$1
+  restore_enabled=$2
+  restore_active=$3
+  restore_failed=0
+  systemctl disable --now "$restore_service" >/dev/null 2>&1 || restore_failed=1
+  if [ "$restore_enabled" = "1" ]; then
+    systemctl enable "$restore_service" >/dev/null 2>&1 || restore_failed=1
+  else
+    systemctl disable "$restore_service" >/dev/null 2>&1 || restore_failed=1
+  fi
+  if [ "$restore_active" = "1" ]; then
+    systemctl start "$restore_service" >/dev/null 2>&1 || restore_failed=1
+  fi
+  return "$restore_failed"
+}
+
+rp1_pps_configure() {
+  pps_mode=$1
+  pps_gpio=$2
+  pps_edge=$3
+  pps_high_ns=${4:-10000000}
+  pps_config=${RP1_PPS_CONFIG:-/etc/default/rp1-pps}
+  pps_service=${RP1_PPS_SERVICE:-rp1-pps.service}
+  pps_tool=${RP1_PPS_TOOL:-/usr/bin/rp1-pps}
+
+  case "$pps_mode" in
+    input|output) ;;
+    *) whiptail --msgbox "Invalid RP1 PPS mode." 20 60 1; return 1 ;;
+  esac
+  case "$pps_gpio" in
+    0|[1-9]|1[0-9]|2[0-7]) ;;
+    *) whiptail --msgbox "Select an RP1 BCM GPIO from 0 to 27." 20 60 1; return 1 ;;
+  esac
+  case "$pps_edge" in
+    rising|falling) ;;
+    *) whiptail --msgbox "Select a rising or falling input edge." 20 60 1; return 1 ;;
+  esac
+  case "$pps_high_ns" in
+    1000000|10000000|100000000) ;;
+    *) whiptail --msgbox "Select an output pulse width of 1, 10, or 100 ms." 20 70 1; return 1 ;;
+  esac
+  if [ ! -x "$pps_tool" ]; then
+    whiptail --msgbox "The RP1 PPS utility is not installed. Install the rp1-ptp-pps package and try again." 20 70 1
+    return 1
+  fi
+  if ! systemctl cat "$pps_service" >/dev/null 2>&1; then
+    whiptail --msgbox "The RP1 PPS systemd service is not installed. Reinstall the rp1-ptp-pps package and try again." 20 70 1
+    return 1
+  fi
+
+  pps_enabled=0
+  pps_active=0
+  systemctl is-enabled --quiet "$pps_service" >/dev/null 2>&1 && pps_enabled=1
+  systemctl is-active --quiet "$pps_service" >/dev/null 2>&1 && pps_active=1
+  pps_backup=$(mktemp "${pps_config}.backup.XXXXXX") || {
+    whiptail --msgbox "Unable to create a backup of the RP1 PPS configuration." 20 70 1
+    return 1
+  }
+  pps_had_config=0
+  if [ -f "$pps_config" ]; then
+    if ! cp -p "$pps_config" "$pps_backup"; then
+      rm -f "$pps_backup"
+      whiptail --msgbox "Unable to back up the existing RP1 PPS configuration." 20 70 1
+      return 1
+    fi
+    pps_had_config=1
+  fi
+
+  if [ "$pps_active" = "1" ] && ! systemctl stop "$pps_service"; then
+    rm -f "$pps_backup"
+    if rp1_pps_restore_service "$pps_service" "$pps_enabled" "$pps_active"; then
+      whiptail --msgbox "Unable to stop the current PPS service. Its configuration was left unchanged and the previous service state was restored." 20 76 1
+    else
+      whiptail --msgbox "Unable to stop the current PPS service or restore its previous state. The configuration was left unchanged. Check systemctl status $pps_service." 20 76 1
+    fi
+    return 1
+  fi
+
+  if ! "$pps_tool" --mode "$pps_mode" --gpio "$pps_gpio" --edge "$pps_edge" >/dev/null 2>&1; then
+    rm -f "$pps_backup"
+    if rp1_pps_restore_service "$pps_service" "$pps_enabled" "$pps_active"; then
+      whiptail --msgbox "The selected GPIO could not be validated against the active RP1 PHC. The previous PPS configuration was restored." 20 70 1
+    else
+      whiptail --msgbox "The selected GPIO could not be validated, and the previous PPS service could not be restarted. Check systemctl status $pps_service." 20 70 1
+    fi
+    return 1
+  fi
+
+  pps_tmp=$(mktemp "${pps_config}.tmp.XXXXXX") || {
+    rm -f "$pps_backup"
+    if rp1_pps_restore_service "$pps_service" "$pps_enabled" "$pps_active"; then
+      whiptail --msgbox "Unable to create a temporary RP1 PPS configuration. The previous service state was restored." 20 70 1
+    else
+      whiptail --msgbox "Unable to create a temporary RP1 PPS configuration or restore the previous service state. Check systemctl status $pps_service." 20 76 1
+    fi
+    return 1
+  }
+  if ! {
+    printf 'PPS_INTERFACE=eth0\n'
+    printf 'TESTPTP=/usr/bin/testptp\n'
+    printf 'PPS_MODE=%s\n' "$pps_mode"
+    printf 'PPS_GPIO=%s\n' "$pps_gpio"
+    printf 'PPS_EDGE=%s\n' "$pps_edge"
+    printf 'PPS_EVENTS=0\n'
+    printf 'PPS_EVENT_TIMEOUT=5\n'
+    printf 'PPS_PERIOD_NS=1000000000\n'
+    printf 'PPS_HIGH_NS=%s\n' "$pps_high_ns"
+    printf 'PPS_PHASE_NS=0\n'
+  } > "$pps_tmp"; then
+    rm -f "$pps_tmp" "$pps_backup"
+    if rp1_pps_restore_service "$pps_service" "$pps_enabled" "$pps_active"; then
+      whiptail --msgbox "Unable to write the RP1 PPS configuration. The previous service state was restored." 20 70 1
+    else
+      whiptail --msgbox "Unable to write the RP1 PPS configuration or restore the previous service state. Check systemctl status $pps_service." 20 76 1
+    fi
+    return 1
+  fi
+  if ! chmod 0644 "$pps_tmp" || ! mv -f "$pps_tmp" "$pps_config"; then
+    rm -f "$pps_tmp" "$pps_backup"
+    if rp1_pps_restore_service "$pps_service" "$pps_enabled" "$pps_active"; then
+      whiptail --msgbox "Unable to install the RP1 PPS configuration. The previous service state was restored." 20 70 1
+    else
+      whiptail --msgbox "Unable to install the RP1 PPS configuration or restore the previous service state. Check systemctl status $pps_service." 20 76 1
+    fi
+    return 1
+  fi
+
+  if systemctl daemon-reload && systemctl enable --now "$pps_service"; then
+    rm -f "$pps_backup"
+    whiptail --msgbox "RP1 PPS $pps_mode is configured on BCM GPIO $pps_gpio." 20 70 1
+    return 0
+  fi
+
+  pps_restored=1
+  if [ "$pps_had_config" = "1" ]; then
+    pps_tmp=$(mktemp "${pps_config}.restore.XXXXXX") || pps_restored=0
+    if [ "$pps_restored" = "1" ]; then
+      if ! cp -p "$pps_backup" "$pps_tmp" || ! mv -f "$pps_tmp" "$pps_config"; then
+        rm -f "$pps_tmp"
+        pps_restored=0
+      fi
+    fi
+  else
+    rm -f "$pps_config" || pps_restored=0
+  fi
+  rm -f "$pps_backup"
+  if [ "$pps_restored" != "1" ]; then
+    systemctl disable --now "$pps_service" >/dev/null 2>&1 || true
+    whiptail --msgbox "Unable to start RP1 PPS, and restoring its previous configuration failed. The service was left stopped. Restore $pps_config and inspect systemctl status $pps_service." 20 76 1
+    return 1
+  fi
+  systemctl daemon-reload >/dev/null 2>&1 || true
+  if rp1_pps_restore_service "$pps_service" "$pps_enabled" "$pps_active"; then
+    whiptail --msgbox "Unable to start the RP1 PPS service. The previous configuration and service state were restored." 20 70 1
+  else
+    whiptail --msgbox "Unable to start RP1 PPS. The previous configuration was restored, but systemd could not restore its earlier state. Check systemctl status $pps_service." 20 76 1
+  fi
+  return 1
+}
+
+rp1_pps_disable() {
+  pps_config=${RP1_PPS_CONFIG:-/etc/default/rp1-pps}
+  pps_service=${RP1_PPS_SERVICE:-rp1-pps.service}
+  pps_enabled=0
+  pps_active=0
+  systemctl is-enabled --quiet "$pps_service" >/dev/null 2>&1 && pps_enabled=1
+  systemctl is-active --quiet "$pps_service" >/dev/null 2>&1 && pps_active=1
+  if systemctl cat "$pps_service" >/dev/null 2>&1 && ! systemctl disable --now "$pps_service"; then
+    whiptail --msgbox "Unable to stop and disable the RP1 PPS service. The configuration was left unchanged." 20 70 1
+    return 1
+  fi
+  if [ -f "$pps_config" ] && ! rm -f "$pps_config"; then
+    if rp1_pps_restore_service "$pps_service" "$pps_enabled" "$pps_active"; then
+      whiptail --msgbox "Unable to remove the RP1 PPS configuration. The previous service state was restored." 20 70 1
+    else
+      whiptail --msgbox "Unable to remove the RP1 PPS configuration or restore the previous service state. Check systemctl status $pps_service." 20 76 1
+    fi
+    return 1
+  fi
+  whiptail --msgbox "RP1 PPS input/output is disabled." 20 70 1
+  return 0
+}
+
+do_rp1_pps() {
+  pps_config=${RP1_PPS_CONFIG:-/etc/default/rp1-pps}
+  pps_current=Disabled
+  if [ -r "$pps_config" ]; then
+    pps_saved_mode=$(sed -n 's/^PPS_MODE=//p' "$pps_config" | head -n 1)
+    case "$pps_saved_mode" in
+      input) pps_current=Input ;;
+      output) pps_current=Output ;;
+    esac
+  fi
+  pps_mode=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --default-item "$pps_current" --menu "Configure RP1 PTP hardware-timestamp PPS. Input records timestamps through testptp. Output generates a periodic signal." 20 78 6 \
+    "Disabled" "Stop PPS and remove its configuration" \
+    "Input" "Capture timestamps on a selected GPIO" \
+    "Output" "Generate PPS on a selected GPIO" \
+    3>&1 1>&2 2>&3)
+  pps_ret=$?
+  [ "$pps_ret" -eq 0 ] || return 0
+  case "$pps_mode" in
+    Disabled) rp1_pps_disable; return $? ;;
+    Input|Output) ;;
+    *) return 0 ;;
+  esac
+
+  pps_gpio=$(rp1_pps_select_gpio)
+  pps_ret=$?
+  [ "$pps_ret" -eq 0 ] || return 0
+  pps_edge=rising
+  pps_high_ns=10000000
+  if [ "$pps_mode" = "Input" ]; then
+    pps_edge=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --default-item rising --menu "Select the edge to timestamp." 16 70 4 \
+      "rising" "Timestamp rising edges" \
+      "falling" "Timestamp falling edges" \
+      3>&1 1>&2 2>&3)
+    pps_ret=$?
+    [ "$pps_ret" -eq 0 ] || return 0
+  else
+    pps_width=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --default-item "10 ms" --menu "Select the PPS output high time. The period remains one second." 16 70 4 \
+      "1 ms" "1 millisecond" \
+      "10 ms" "10 milliseconds" \
+      "100 ms" "100 milliseconds" \
+      3>&1 1>&2 2>&3)
+    pps_ret=$?
+    [ "$pps_ret" -eq 0 ] || return 0
+    case "$pps_width" in
+      "1 ms") pps_high_ns=1000000 ;;
+      "10 ms") pps_high_ns=10000000 ;;
+      "100 ms") pps_high_ns=100000000 ;;
+      *) return 0 ;;
+    esac
+  fi
+
+  if [ "$pps_gpio" = "0" ] || [ "$pps_gpio" = "1" ]; then
+    pps_id_pin=27
+    [ "$pps_gpio" = "1" ] && pps_id_pin=28
+    if ! whiptail --yesno "BCM GPIO $pps_gpio is also used for HAT identification on physical pin $pps_id_pin. Using it for PPS can prevent HAT EEPROM identification. Continue?" 20 76; then
+      return 0
+    fi
+  fi
+
+  pps_lc_mode=$(printf '%s' "$pps_mode" | tr '[:upper:]' '[:lower:]')
+  rp1_pps_configure "$pps_lc_mode" "$pps_gpio" "$pps_edge" "$pps_high_ns"
+}
+
 do_interface_menu() {
   if is_pi ; then
-    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Interfacing Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+    if is_pifive ; then
+      FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Interfacing Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+      "I1 SSH" "Enable/disable remote command line access using SSH" \
+      "I2 RPi Connect" "Enable/disable Raspberry Pi Connect" \
+      "I3 VNC" "Enable/disable graphical remote desktop access" \
+      "I4 SPI" "Enable/disable automatic loading of SPI kernel module" \
+      "I5 I2C" "Enable/disable automatic loading of I2C kernel module" \
+      "I6 Serial Port" "Enable/disable shell messages on the serial connection" \
+      "I7 1-Wire" "Enable/disable one-wire interface" \
+      "I8 RP1 PTP PPS" "Configure PPS input or output on an RP1 GPIO" \
+      3>&1 1>&2 2>&3)
+    else
+      FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Interfacing Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
       "I1 SSH" "Enable/disable remote command line access using SSH" \
       "I2 RPi Connect" "Enable/disable Raspberry Pi Connect" \
       "I3 VNC" "Enable/disable graphical remote desktop access" \
@@ -4036,6 +4328,7 @@ do_interface_menu() {
       "I6 Serial Port" "Enable/disable shell messages on the serial connection" \
       "I7 1-Wire" "Enable/disable one-wire interface" \
       3>&1 1>&2 2>&3)
+    fi
   else
     FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Interfacing Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
       "I2 SSH" "Enable/disable remote command line access using SSH" \
@@ -4053,6 +4346,7 @@ do_interface_menu() {
       I5\ *) do_i2c ;;
       I6\ *) if is_pifive ; then do_serial_pi5 ; else do_serial ; fi ;;
       I7\ *) do_onewire ;;
+      I8\ *) if is_pifive ; then do_rp1_pps ; fi ;;
       *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
     esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
   fi

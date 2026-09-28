@@ -12,9 +12,20 @@
 override_dh_installinit:
 	dh_installinit --no-start
 
+override_dh_auto_build:
+	mkdir -p debian/build
+	$(CC) $(CPPFLAGS) $(CFLAGS) -Idebian/include -o debian/build/testptp debian/testptp.c $(LDFLAGS) -lm
+
+override_dh_auto_clean:
+	rm -rf debian/build
+
+override_dh_installsystemd:
+	dh_installsystemd --no-enable --no-start
+
 override_dh_auto_test:
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 	cd tests && ./run_all_tests.sh
+	debian/build/testptp -h >/dev/null
 endif
 
 %:

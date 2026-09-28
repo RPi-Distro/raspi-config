@@ -1,0 +1,6 @@
+debian/build/testptp usr/bin
+rp1-ptp-pps/rp1_pps.py usr/libexec/rp1-ptp-pps
+rp1-ptp-pps/phc_identity.py usr/libexec/rp1-ptp-pps
+rp1-ptp-pps/rp1-pps usr/bin
+rp1-ptp-pps/rp1-pps.service usr/lib/systemd/system
+rp1-ptp-pps/rp1-pps.conf.example usr/share/doc/rp1-ptp-pps/examples

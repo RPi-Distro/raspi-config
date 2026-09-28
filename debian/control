@@ -2,7 +2,7 @@ Source: raspi-config
 Section: utils
 Priority: optional
 Maintainer: Serge Schneider <serge@raspberrypi.com>
-Build-Depends: debhelper-compat (= 13), shunit2 <!nocheck>
+Build-Depends: debhelper-compat (= 13), shunit2 <!nocheck>, linux-libc-dev
 Standards-Version: 4.3.0
 Vcs-Git: https://github.com/RPi-Distro/raspi-config.git
 Vcs-Browser: https://github.com/RPi-Distro/raspi-config
@@ -11,9 +11,18 @@ Package: raspi-config
 Architecture: all
 Depends: ${misc:Depends}, raspi-config-core, whiptail, parted, alsa-utils,
  psmisc, raspi-utils-core, dconf-cli, bsdextrautils
-Recommends: iw
+Recommends: iw, rp1-ptp-pps
 Description: Raspberry Pi configuration tool
  A simple configuration tool for common Raspberry Pi administrative tasks
+
+Package: rp1-ptp-pps
+Architecture: armhf arm64
+Depends: ${misc:Depends}, ${shlibs:Depends}, python3, systemd
+Description: RP1 Ethernet PTP PPS control utility
+ A guarded command-line and systemd service for configuring PPS input and
+ output on programmable GPIO pins exposed by the Raspberry Pi RP1 Ethernet
+ PTP hardware clock. The utility uses the standard Linux PTP interface and
+ testptp selftest program.
 
 Package: raspi-config-core
 Architecture: all

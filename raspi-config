@@ -3261,7 +3261,7 @@ do_link_local_fallback() {
   fi
 
   if [ "$INTERACTIVE" = True ]; then
-    whiptail --yesno "Would you like to enable link-local fallback?\n\nNote: This assigns a 169.254.x.x address immediately, before trying DHCP. Enable only if you understand this behavior." $DEFAULT 20 75 2
+    whiptail --yesno "Would you like to enable link-local fallback?\n\nNote: This assigns a 169.254.x.x address while no DHCP lease is available. DHCP is retried indefinitely instead of failing the connection, so other connection profiles for the interface will not be tried. Enable only if you understand this behavior." $DEFAULT 20 75 2
     RET=$?
   else
     RET=$1
@@ -3274,13 +3274,18 @@ do_link_local_fallback() {
   fi
 
   # Only make changes if the setting is actually changing
-  if [ "$RET" -eq 0 ] && [ "$CURRENT" -eq 0 ]; then
-    # Enable link-local fallback
+  # (or if an older configuration lacks the DHCP timeout)
+  if [ "$RET" -eq 0 ] && ! grep -qs '^ipv4.dhcp-timeout=' /etc/NetworkManager/conf.d/link-local.conf; then
+    # Enable link-local fallback. Without an infinite DHCP timeout,
+    # NetworkManager fails the connection when DHCP times out and tears
+    # down the link-local address with it. See
+    # https://gitlab.freedesktop.org/NetworkManager/NetworkManager/-/issues/1753
     mkdir -p /etc/NetworkManager/conf.d
     cat > /etc/NetworkManager/conf.d/link-local.conf << EOF
 # Created/managed by raspi-config
 [connection]
 ipv4.link-local=4
+ipv4.dhcp-timeout=2147483647
 EOF
     ASK_TO_REBOOT=1
   elif [ "$RET" -eq 1 ] && [ "$CURRENT" -eq 1 ]; then

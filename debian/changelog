@@ -1,3 +1,10 @@
+raspi-config (20261026) trixie; urgency=medium
+
+  * Honour option argument in nonint do_journald_storage
+  * Keep link-local fallback address when DHCP times out
+
+ -- Serge Schneider <serge@raspberrypi.com>  Fri, 02 Oct 2026 11:23:07 +0100
+
 raspi-config (20260730) trixie; urgency=medium
 
   [ Simon Long ]

@@ -24,4 +24,4 @@ Description: Raspberry Pi configuration tool (script only)
  A simple configuration tool for common Raspberry Pi administrative tasks
  .
  This package contains just the raspi-config script, intended for advanced,
- non-interactive use. This package does not install any of the depenencies.
+ non-interactive use. This package does not install any of the dependencies.

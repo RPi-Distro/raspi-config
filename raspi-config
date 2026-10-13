@@ -809,7 +809,10 @@ get_wifi_country() {
 
 do_wifi_country() {
   if [ "$INTERACTIVE" = True ]; then
-    value=$(hexdump -C /lib/firmware/regulatory.db | grep -oE '[A-Z]{2}' | sort -u | sed 's/^/^/;s/$/\t/' | grep -f- /usr/share/zoneinfo/iso3166.tab | tr '\t\n' '/')
+    # regulatory.db: 8-byte header, then one 4-byte record per country (alpha2 + pointer).
+    # Read the records rather than searching a hex dump for letter pairs: a pointer byte
+    # that happens to be a capital letter pairs up with the next code and hides it.
+    value=$(od -A n -v -t c -w4 -j 8 /lib/firmware/regulatory.db | awk '$1 ~ /^[A-Z0-9]$/ && $2 ~ /^[A-Z0-9]$/ {print $1 $2; next} {exit}' | sort -u | sed 's/^/^/;s/$/\t/' | grep -f- /usr/share/zoneinfo/iso3166.tab | tr '\t\n' '/')
     oIFS="$IFS"
     IFS="/"
     #shellcheck disable=2086

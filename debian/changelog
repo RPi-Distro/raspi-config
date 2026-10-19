@@ -1,3 +1,10 @@
+raspi-config (20261026+1) trixie; urgency=medium
+
+  [ Simon Long ]
+  * Fix interface menu options for PC version
+
+ -- Simon Long <simon@raspberrypi.com>  Mon, 19 Oct 2026 14:16:16 +0100
+
 raspi-config (20261026) trixie; urgency=medium
 
   * Honour option argument in nonint do_journald_storage

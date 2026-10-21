@@ -1809,7 +1809,11 @@ do_browser() {
       BROWSER="chromium"
       BSTRING="Chromium"
     elif [ "$RES" = "2" ] ; then
-      BROWSER="firefox"
+      if is_pi; then
+        BROWSER="firefox"
+      else
+        BROWSER="firefox-esr"
+      fi
       BSTRING="Firefox"
     fi
     update-alternatives --set x-www-browser /usr/bin/$BROWSER > /dev/null

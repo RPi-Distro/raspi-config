@@ -1,3 +1,10 @@
+raspi-config (20261026+2) trixie; urgency=medium
+
+  [ Simon Long ]
+  * Fix browser select for PC version
+
+ -- Simon Long <simon@raspberrypi.com>  Wed, 21 Oct 2026 07:25:48 +0100
+
 raspi-config (20261026+1) trixie; urgency=medium
 
   [ Simon Long ]

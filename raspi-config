@@ -550,6 +550,12 @@ do_blanking() {
     mkdir -p "$HOMEDIR/.config/labwc/"
     chown -R $USER:$USER "$HOMEDIR/.config/labwc/"
     if [ "$RET" -eq 0 ] ; then
+      if [ -e $LABWCAST_FILE ] ; then
+        sed -i '/swayidle/d' $LABWCAST_FILE
+      fi
+      if [ -e /etc/xdg/labwc-greeter/autostart ] ; then
+        sed -i '/swayidle/d' /etc/xdg/labwc-greeter/autostart
+      fi
       echo "swayidle -w timeout 600 'wlopm --off \\*' resume 'wlopm --on \\*' &" >> $LABWCAST_FILE
       chown $USER:$USER $LABWCAST_FILE
       echo "swayidle -w timeout 600 'wlopm --off \\*' resume 'wlopm --on \\*' &" >> /etc/xdg/labwc-greeter/autostart
@@ -1640,7 +1646,7 @@ get_leds () {
 
 do_leds() {
   CURRENT=$(get_leds)
-  if [ $CURRENT -eq -1 ] ; then
+  if [ ! -e /sys/class/leds/ACT/trigger ] ; then
     if [ "$INTERACTIVE" = True ]; then
       whiptail --msgbox "The LED behaviour cannot be changed on this model of Raspberry Pi" 20 60 1
     fi

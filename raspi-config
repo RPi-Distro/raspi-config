@@ -1608,7 +1608,7 @@ do_composite() {
   fi
   if [ $RET -eq 0 ]; then
     sed $CONFIG -i -e "s/^dtoverlay=vc4-kms-v3d.*/dtoverlay=vc4-kms-v3d,composite/"
-    sed $CONFIG -i -e "s/^#\?enable_tvout=.*/enable_tvout=1/"
+    set_config_var enable_tvout 1 $CONFIG
     sed $CONFIG -i -e "s/^hdmi_enable_4kp60=/#hdmi_enable_4kp60=/"
     STATUS=enabled
   elif [ $RET -eq 1 ]; then
@@ -2602,7 +2602,7 @@ do_legacy() {
     sed $CONFIG -i -e '/\[pi4\]/,/\[/ !s/^dtoverlay=vc4-kms-v3d/#dtoverlay=vc4-kms-v3d/g'
     sed $CONFIG -i -e '/\[pi4\]/,/\[/ !s/^dtoverlay=vc4-fkms-v3d/#dtoverlay=vc4-fkms-v3d/g'
     if ! sed -n '/\[pi4\]/,/\[/ p' $CONFIG | grep -q '^dtoverlay=vc4-fkms-v3d' ; then
-      if grep -q '[pi4]' $CONFIG ; then
+      if grep -q '^\[pi4\]' $CONFIG ; then
         sed $CONFIG -i -e 's/\[pi4\]/\[pi4\]\ndtoverlay=vc4-fkms-v3d/'
       else
         printf "[pi4]\ndtoverlay=vc4-fkms-v3d\n" >> $CONFIG
@@ -2619,7 +2619,7 @@ do_legacy() {
     sed $CONFIG -i -e 's/^#\?dtoverlay=vc4-f\?kms-v3d/dtoverlay=vc4-kms-v3d/g'
     sed $CONFIG -i -e '/\[pi4\]/,/\[/ {/dtoverlay=vc4-kms-v3d/d}'
     if ! sed -n '/\[pi4\]/,/\[/ !p' $CONFIG | grep -q '^dtoverlay=vc4-kms-v3d' ; then
-      if grep -q '[all]' $CONFIG ; then
+      if grep -q '^\[all\]' $CONFIG ; then
         sed $CONFIG -i -e 's/\[all\]/\[all\]\ndtoverlay=vc4-kms-v3d/'
       else
         printf "[all]\ndtoverlay=vc4-kms-v3d\n" >> $CONFIG
@@ -3583,6 +3583,9 @@ do_overlayfs() {
 get_proxy() {
   SCHEME="$1"
   VAR_NAME="${SCHEME}_proxy"
+  if [ "$SCHEME" = rsync ]; then
+    VAR_NAME=RSYNC_PROXY
+  fi
   if [ -f /etc/profile.d/proxy.sh ]; then
     # shellcheck disable=SC1091
     . /etc/profile.d/proxy.sh
@@ -3844,6 +3847,7 @@ do_sudo_pass() {
       cat > $PSFILE << EOF
 $USER ALL=(ALL) NOPASSWD: ALL
 EOF
+    chmod 0440 "$PSFILE"
     STATUS=disabled
   else
     return "$RET"

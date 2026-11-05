@@ -3947,6 +3947,8 @@ do_system_menu() {
       "S4 Hostname" "Set name for this computer on a network" \
       "S5 Boot" "Select boot into desktop or to command line" \
       "S6 Auto Login" "Enable auto login to desktop or to command line" \
+      "S9 Browser" "Choose default web browser" \
+      "S10 Admin Password" "Enable or disable sudo password" \
       3>&1 1>&2 2>&3)
   else
     FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "System Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
@@ -3956,6 +3958,7 @@ do_system_menu() {
       "S5 Boot" "Select boot into desktop or to command line" \
       "S6 Auto Login" "Enable auto login to desktop or to command line" \
       "S7 Splash Screen" "Choose graphical splash screen or text boot" \
+      "S9 Browser" "Choose default web browser" \
       "S10 Admin Password" "Enable or disable sudo password" \
       3>&1 1>&2 2>&3)
   fi
@@ -4017,10 +4020,18 @@ do_display_menu() {
       fi
     fi
   else
-    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
-      "D1 Underscan" "Remove black border around screen" \
-      "D2 Screen Blanking" "Enable/disable screen blanking" \
-      3>&1 1>&2 2>&3)
+    if is_wayland; then
+      FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+        "D2 Screen Blanking" "Enable/disable screen blanking" \
+        "D6 Onscreen Keyboard" "Enable on-screen keyboard" \
+        "D7 Keyboard Output" "Select monitor used for on-screen keyboard" \
+        3>&1 1>&2 2>&3)
+    else
+      FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Display Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+        "D1 Underscan" "Remove black border around screen" \
+        "D2 Screen Blanking" "Enable/disable screen blanking" \
+        3>&1 1>&2 2>&3)
+    fi
   fi
   RET=$?
   if [ $RET -eq 1 ]; then
@@ -4049,6 +4060,12 @@ do_interface_menu() {
       "I5 I2C" "Enable/disable automatic loading of I2C kernel module" \
       "I6 Serial Port" "Enable/disable shell messages on the serial connection" \
       "I7 1-Wire" "Enable/disable one-wire interface" \
+      3>&1 1>&2 2>&3)
+  elif is_wayland ; then
+    FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Interfacing Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \
+      "I1 SSH" "Enable/disable remote command line access using SSH" \
+      "I2 RPi Connect" "Enable/disable Raspberry Pi Connect" \
+      "I3 VNC" "Enable/disable graphical remote desktop access" \
       3>&1 1>&2 2>&3)
   else
     FUN=$(whiptail --title "Raspberry Pi Software Configuration Tool (raspi-config)" --menu "Interfacing Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Back --ok-button Select \

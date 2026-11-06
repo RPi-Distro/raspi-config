@@ -824,16 +824,16 @@ do_wifi_country() {
   else
     REGDOMAIN=$1
   fi
-  if ! grep -q "^${REGDOMAIN}[[:space:]]" /usr/share/zoneinfo/iso3166.tab; then
+  if [ "$REGDOMAIN" != "00" ] && ! grep -q "^${REGDOMAIN}[[:space:]]" /usr/share/zoneinfo/iso3166.tab; then
     if [ "$INTERACTIVE" = True ]; then
       whiptail --msgbox "$REGDOMAIN is not a valid ISO/IEC 3166-1 alpha2 code" 20 60
     fi
     return 1
   fi
-  sed -i \
-    -e "s/\s*cfg80211.ieee80211_regdom=\S*//" \
-    -e "s/\(.*\)/\1 cfg80211.ieee80211_regdom=$REGDOMAIN/" \
-    "$CMDLINE"
+  sed -i -e "s/\s*cfg80211.ieee80211_regdom=\S*//" "$CMDLINE"
+  if [ "$REGDOMAIN" != "00" ]; then
+    sed -i -e "s/\(.*\)/\1 cfg80211.ieee80211_regdom=$REGDOMAIN/" "$CMDLINE"
+  fi
   if is_installed crda && [ -e /etc/default/crda ]; then
     # This mechanism has been removed from Bookworm and should no longer be used
     rm -f /etc/default/crda
@@ -847,22 +847,23 @@ do_wifi_country() {
     wpa_cli -i "$IFACE" set country "$REGDOMAIN" > /dev/null 2>&1
     wpa_cli -i "$IFACE" save_config > /dev/null 2>&1
   fi
-
-  if [ "$INIT" = "systemd" ] && ! ischroot && systemctl -q is-active NetworkManager; then
-    nmcli radio wifi on
-  elif hash rfkill 2> /dev/null; then
-    rfkill unblock wifi
-    if [ -f /var/lib/NetworkManager/NetworkManager.state ]; then
-      sed -i 's/^WirelessEnabled=.*/WirelessEnabled=true/' /var/lib/NetworkManager/NetworkManager.state
-    fi
-  fi
-  if is_pi; then
-    for filename in /var/lib/systemd/rfkill/*:wlan ; do
-      if ! [ -e "$filename" ]; then
-        continue
+  if [ "$REGDOMAIN" != "00" ]; then
+    if [ "$INIT" = "systemd" ] && ! ischroot && systemctl -q is-active NetworkManager; then
+      nmcli radio wifi on
+    elif hash rfkill 2> /dev/null; then
+      rfkill unblock wifi
+      if [ -f /var/lib/NetworkManager/NetworkManager.state ]; then
+        sed -i 's/^WirelessEnabled=.*/WirelessEnabled=true/' /var/lib/NetworkManager/NetworkManager.state
       fi
-      echo 0 > "$filename"
-    done
+    fi
+    if is_pi; then
+      for filename in /var/lib/systemd/rfkill/*:wlan ; do
+        if ! [ -e "$filename" ]; then
+          continue
+        fi
+        echo 0 > "$filename"
+      done
+    fi
   fi
   if [ "$INTERACTIVE" = True ]; then
     whiptail --msgbox "Wireless LAN country set to $REGDOMAIN" 20 60 1
